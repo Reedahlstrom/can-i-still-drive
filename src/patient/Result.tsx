@@ -131,6 +131,7 @@ function rideCopy(ride: NonNullable<Ride>, option: RideOption, destName: string)
     case "shuttle":
       return { title: "Request sent", sub: `The shuttle office will call you to set a time. To ${destName}.` };
     default:
+      if (ride.when === "later") return { title: "Ride scheduled", sub: `Pickup at 2:00 PM. To ${destName}. You'll get a text when the car is on its way.` };
       return ride.status === "requested" ? { title: "Finding your ride", sub: `To ${destName}` } : { title: "Your ride is on the way", sub: `To ${destName}` };
   }
 }
@@ -158,7 +159,7 @@ export function RideSheet() {
   const destName = ride?.dest === "other" ? ride.other || "Your address" : ride?.dest ? destinations[ride.dest]?.name : "";
   const from = atVisit && ride?.when === "now" ? `${hospital.name}, 1200 E Lakeview Dr` : `${home.label}, ${home.address}`;
   const ready = !!ride?.dest && (ride.dest !== "other" || !!ride.other?.trim());
-  const request = () => ride && set({ ride: { ...ride, status: option.id === "shuttle" ? "arriving" : "requested" } });
+  const request = () => ride && set({ ride: { ...ride, status: option.id === "shuttle" || (ride.when === "later" && option.id !== "family") ? "arriving" : "requested" } });
 
   return (
     <AnimatePresence>
@@ -244,12 +245,12 @@ export function RideSheet() {
               </>
             ) : (
               <>
-                {(option.id === "app" || option.id === "self") && <RideMap arriving={ride.status === "arriving"} />}
+                {(option.id === "app" || option.id === "self") && ride.when === "now" && <RideMap arriving={ride.status === "arriving"} />}
                 {(() => {
                   const c = rideCopy(ride, option, destName);
                   return (
                     <>
-                      <h2 className={`${option.id === "app" || option.id === "self" ? "mt-5" : ""} font-display text-[28px] font-extrabold`}>{c.title}</h2>
+                      <h2 className={`${(option.id === "app" || option.id === "self") && ride.when === "now" ? "mt-5" : ""} font-display text-[28px] font-extrabold`}>{c.title}</h2>
                       <p className="mt-1 text-[18px] text-graphite">{c.sub}</p>
                     </>
                   );
@@ -265,7 +266,7 @@ export function RideSheet() {
                     </p>
                   </div>
                 )}
-                {ride.status === "arriving" && option.id !== "shuttle" && option.id !== "family" && (
+                {ride.status === "arriving" && ride.when === "now" && option.id !== "shuttle" && option.id !== "family" && (
                   <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="mt-5 flex items-center gap-4 rounded-2xl bg-paper px-5 py-4">
                     <Avatar initials={option.id === "self" ? "SD" : "LM"} size={48} tone="mist" />
                     <div className="flex-1">

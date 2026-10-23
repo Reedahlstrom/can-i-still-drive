@@ -3,7 +3,7 @@ import { motion } from "motion/react";
 import { useEffect, useState } from "react";
 import { locations, simulators, specialist, visit } from "../data/demo";
 import { longDate, today } from "../lib/dates";
-import { DRIVE, useDriveClock } from "../sim/timeline";
+import { DRIVE, driveSeconds, useDriveClock } from "../sim/timeline";
 import { atLeast, useDemo, type Phase } from "../state/store";
 import { Avatar } from "../ui/Brand";
 import { Button, CheckDot, ChoiceList, Group, SectionLabel } from "../ui/primitives";
@@ -227,7 +227,8 @@ export function Driving() {
   const go = useDemo((s) => s.go);
   const t = useDriveClock(simStart, speed, 2);
   useEffect(() => {
-    if (t >= DRIVE && useDemo.getState().phase === "driving") go("post-drive");
+    const s = useDemo.getState();
+    if (s.phase === "driving" && driveSeconds(s.simStart, s.speed) >= DRIVE) go("post-drive");
   }, [t, go]);
   return (
     <Screen tone="dark" speech={`You're driving. ${specialist.first} is right beside you. Say stop any time.`}>

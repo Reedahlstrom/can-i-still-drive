@@ -125,7 +125,8 @@ function SignaturePad({ onSigned, value }: { onSigned: (v: string | null) => voi
         onPointerUp={(e) => {
           if (!drawing.current) return;
           drawing.current = false;
-          if (moved.current > 3) onSigned(e.currentTarget.toDataURL());
+          // The first stroke must be a real one; after that every stroke is kept.
+          if (moved.current > 3 || signed) onSigned(e.currentTarget.toDataURL());
         }}
         onPointerCancel={() => (drawing.current = false)}
       />

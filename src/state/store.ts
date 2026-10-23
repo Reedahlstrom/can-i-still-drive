@@ -265,7 +265,13 @@ if (channel) {
       if (typeof s[k] === "function") continue;
       if (s[k] !== prev[k]) changed[k] = s[k];
     }
-    if (Object.keys(changed).length) channel.postMessage(changed);
+    if (!Object.keys(changed).length) return;
+    // Phase changes carry the full visit so every tab reconciles at each step.
+    if ("phase" in changed) {
+      const full: Record<string, unknown> = {};
+      for (const k of Object.keys(s) as (keyof typeof s)[]) if (typeof s[k] !== "function") full[k] = s[k];
+      channel.postMessage(full);
+    } else channel.postMessage(changed);
   });
   channel.onmessage = (e: MessageEvent<Partial<Data>>) => {
     applyingRemote = true;

@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 import { SimCanvas } from "../sim/SimCanvas";
-import { DRIVE, useDriveClock } from "../sim/timeline";
+import { DRIVE, driveSeconds, useDriveClock } from "../sim/timeline";
 import { useDemo, useRaw } from "../state/store";
 import { DriverScoreWordmark } from "../ui/Brand";
 import { SteeringWheel } from "../ui/Road";
@@ -18,8 +18,9 @@ export function SimulatorScreen() {
   const isLive = scenario === "live";
 
   useEffect(() => {
-    if (phase === "driving" && t >= DRIVE) go("post-drive");
-  }, [phase, t, go]);
+    // Read the clock fresh so a new drive never inherits the last drive's elapsed time.
+    if (phase === "driving" && driveSeconds(simStart, speed) >= DRIVE) go("post-drive");
+  }, [phase, t, go, simStart, speed]);
 
   if (phase !== "driving")
     return (

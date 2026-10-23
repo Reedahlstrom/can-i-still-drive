@@ -167,10 +167,11 @@ export function score(r: Raw): ScoreResult {
     { id: "simulator", label: "Simulator", patientLabel: "Simulator drive", items: simulator, points: sum(simulator.map((i) => i.points)), max: sum(simulator.map((i) => i.max)) },
   ];
 
+  const missingParts = taken.length > 0 && taken.length < parts.length ? parts.filter((p) => p.v === undefined).map((p) => p.name.toLowerCase()) : [];
   const total = Math.round(sum(domains.map((d) => d.points)));
   const possible = Math.round(sum(domains.map((d) => d.max)));
-  const incomplete = possible < 100;
-  const missingTablet = cognitionItems.filter((i) => !i.done).map((i) => (i.id === "trails" ? "Trails" : i.label));
+  const incomplete = possible < 100 || missingParts.length > 0;
+  const missingTablet = [...cognitionItems.filter((i) => !i.done).map((i) => (i.id === "trails" ? "Trails" : i.label)), ...missingParts];
   const missingDrives = simulator.filter((i) => !i.done).length;
   const missing = [...missingTablet, ...(missingDrives ? [`${missingDrives} of 6 drives`] : [])];
 
@@ -198,7 +199,8 @@ export function score(r: Raw): ScoreResult {
     const acuityOnly = hardStops.every((f) => f.text.startsWith("Acuity"));
     suggested = acuityOnly ? "pause" : "stop";
   } else if (thin) suggested = "pause"; // too little evidence to clear or set limits
-  else if (pct >= 85 && findings.length === 0) suggested = "clear";
+  // A domain below half its points never gets a Clear suggestion, however high the total.
+  else if (pct >= 85 && findings.length === 0 && !domains.some((d) => d.max > 0 && d.points < d.max / 2)) suggested = "clear";
   else if (pct >= 70) suggested = "conditions";
   else if (pct >= 55) suggested = "pause";
   else suggested = "stop";

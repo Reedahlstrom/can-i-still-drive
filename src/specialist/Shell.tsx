@@ -19,7 +19,7 @@ export function Rail() {
     "Record review": () => go("record-review"),
     "Tablet tests": () => go("tablet-tests", { tabletStep: "handoff" }),
     "Hands-on checks": () => go("hands-on"),
-    "Simulator drive": () => go("pre-drive"),
+    "Simulator drive": () => go("pre-drive", { simStart: null, drivesCompleted: null, collisionSeen: false }),
   };
   const inVisit = atLeast(phase, "record-review");
   const simBusy = atLeast(phase, "checked-in") && phase !== "released";
