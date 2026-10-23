@@ -124,7 +124,7 @@ export function RecordTab() {
 export function FamilyTab() {
   const familyShare = useDemo((s) => s.familyShare);
   const set = useDemo((s) => s.set);
-  const perms = [{ id: "results", label: `Send ${family.first} my result and plan` }];
+  const perms = [{ id: "results", label: `Keep ${family.first} updated on my result and plan`, detail: "She gets a text when Dana signs and when your plan changes." }];
   return (
     <Screen speech={`Family. You choose what ${family.name} can see.`}>
       <Title className="pt-1">Family</Title>
@@ -142,7 +142,10 @@ export function FamilyTab() {
         <Group>
           {perms.map((p) => (
             <div key={p.id} className="flex items-center justify-between gap-4 px-5 py-4">
-              <span className="text-[19px]">{p.label}</span>
+              <span>
+                <span className="block text-[19px] leading-snug">{p.label}</span>
+                <span className="block text-[16px] leading-snug text-graphite">{p.detail}</span>
+              </span>
               <Toggle label={p.label} on={!!familyShare[p.id]} onChange={(v) => set({ familyShare: { ...familyShare, [p.id]: v } })} />
             </div>
           ))}

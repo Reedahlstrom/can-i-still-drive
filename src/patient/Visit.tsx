@@ -149,7 +149,7 @@ function statusFor(phase: Phase, unwell: boolean) {
     case "record-review":
       return { title: `${specialist.first} is reviewing your record`, lead: "Your health record and answers are open on the iPad." };
     case "tablet-tests":
-      return { title: "Tablet tests", lead: `${specialist.first} will hand you the iPad. Take your time.` };
+      return { title: "Tablet tests", lead: `${specialist.first} will hand you the iPad. Each test shows you how it works first. One of them is timed.` };
     case "hands-on":
       return { title: "Hands-on checks", lead: `${specialist.first} will check your vision, memory and movement.` };
     case "pre-drive":
@@ -262,9 +262,10 @@ export function PostDrive() {
     );
   }
   return (
-    <Screen speech="How do you think you did? Choose 1 for not well, up to 5 for very well." footer={<Button disabled={rating === null} onClick={() => set({ selfRating: rating })}>Done</Button>}>
+    <Screen speech={`How do you think you did? ${specialist.first} sees your answer. It isn't part of your DriverScore. Choose 1 for not well, up to 5 for very well.`} footer={<Button disabled={rating === null} onClick={() => set({ selfRating: rating })}>Done</Button>}>
       <Meta className="mb-3">After the drive</Meta>
       <Title>How do you think you did?</Title>
+      <Lead>{specialist.first} sees your answer. It isn't part of your DriverScore.</Lead>
       <div className="mt-9 grid grid-cols-5 gap-2" role="radiogroup" aria-label="Your rating">
         {[1, 2, 3, 4, 5].map((n) => (
           <button

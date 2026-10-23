@@ -56,15 +56,15 @@ export const outcomeCopy: Record<
   conditions: {
     label: "Drive with conditions",
     title: "You can keep driving, with a few limits.",
-    note: "You drove well on familiar roads. Lane changes at highway speed were harder, and the vision in your left eye has dropped since last year. The limits below keep you driving safely until your re-test.",
+    note: "On the simulator, your turns and city driving went well. Lane changes in faster traffic were harder, and the vision in your left eye has dropped since last year. Keep to the limits below until your re-test.",
     conditions: ["Daylight only", "No highways", "Within 15 miles of home"],
-    plan: ["Eye exam for glare", "Two practice drives on the simulator"],
+    plan: ["Eye exam for your left eye", "Two practice drives on the simulator"],
     retestMonths: 6,
   },
   pause: {
     label: "Pause and reassess",
     title: "Pause driving until you're treated and re-tested.",
-    note: "Your cataract is affecting your vision more than it did in March, and your sleep medicine may be making you drowsy in the morning. Both can be treated. Once they are, we'll test again.",
+    note: "Your vision tested worse today than at your eye exam in March, and your sleep medicine can cause drowsiness the next morning. Your eye doctor and Dr. Patel will look at both. Once they have, we'll test again.",
     conditions: [],
     plan: ["Cataract review", "Sleep medicine review", "Re-test after treatment"],
     retestMonths: 0,
@@ -82,7 +82,7 @@ export const outcomeCopy: Record<
 /** Who takes care of each plan item, in the patient's words, with a fallback if the call never comes. */
 export const planDetail: Record<string, string> = {
   "Yearly eye exam": "Book with your eye doctor before this time next year.",
-  "Eye exam for glare": "Dr. Patel gets your report and will refer you to an eye doctor. No call within a week? Call (801) 555-0100.",
+  "Eye exam for your left eye": "Dr. Patel gets your report and will refer you to Granite Eye Associates. No call within a week? Call (801) 555-0100.",
   "Cataract review": "Dr. Patel gets your report and will refer you to Granite Eye Associates. No call within a week? Call (801) 555-0100.",
   "Sleep medicine review": "Dana sent Dr. Patel a note. Dr. Patel's office will call you. No call within a week? Call (801) 555-0100.",
   "Two practice drives on the simulator": "Dana's office will call you to book. No call within a week? Call (801) 555-0204.",

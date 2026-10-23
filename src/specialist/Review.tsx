@@ -298,7 +298,7 @@ export function ReviewSign() {
               )}
 
               <h2 className={`mt-6 ${label}`}>Note to {patient.first}</h2>
-              <p className="text-[13px] text-graphite">She sees this under your name.</p>
+              <p className="text-[13px] text-graphite">She sees this under your name. It starts from a template: delete anything that didn't happen today.</p>
               {d.noteFor && d.noteFor !== d.outcome && (
                 <p className="mt-1 rounded-lg bg-signal-soft px-3 py-2 text-[13px] font-semibold text-signal-ink">Written for {outcomeCopy[d.noteFor].label}. Reread before signing.</p>
               )}
@@ -318,7 +318,11 @@ export function ReviewSign() {
             <div className="mb-3 text-[14px] leading-snug">
               <span className="text-graphite">{patient.first} will see: </span>
               <span className="font-semibold">{outcomeCopy[d.outcome].title}</span>
-              <span className="text-graphite"> Then your note, next steps, and DriverScore {result.total} with four section scores.</span>
+              <span className="text-graphite">
+                {" "}
+                Then your note,{d.outcome === "conditions" ? " her limits," : ""} next steps,{needsTalk ? " ride options," : ""} and DriverScore {result.total}
+                {result.incomplete ? ` of ${result.possible}` : ""} with four section scores.
+              </span>
             </div>
           )}
           {needsTalk && (

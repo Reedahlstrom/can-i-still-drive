@@ -75,19 +75,26 @@ function NextSteps() {
 
 function ShareWithFamily() {
   const familyShare = useDemo((s) => s.familyShare);
+  const d = useDemo((s) => s.determination)!;
   const set = useDemo((s) => s.set);
   const shared = familyShare.results;
+  const title = d.outcome ? outcomeCopy[d.outcome].title : "";
   return (
     <div className="mt-9">
+      {!shared && (
+        <p className="mb-3 rounded-2xl bg-paper px-5 py-4 text-[17px] leading-snug text-graphite">
+          {family.first} gets: "Mom's driving result, signed by {specialist.name}: {title} Next steps: {d.plan.join("; ")}. Questions? {specialist.first}'s office, {offices.dana}."
+        </p>
+      )}
       <Button
-        variant={shared ? "secondary" : "primary"}
+        variant="secondary"
         className="w-full"
         icon={shared ? <Check size={20} strokeWidth={3} /> : <Share2 size={20} />}
         onClick={() => !shared && set({ familyShare: { ...familyShare, results: true } })}
       >
-        {shared ? `Sent to ${family.first}` : `Text this to ${family.first}`}
+        {shared ? `Sent to ${family.first}` : `Send my result to ${family.first}`}
       </Button>
-      {shared && <p className="mt-2 text-center text-[17px] text-graphite">You can stop this in Family.</p>}
+      {shared && <p className="mt-2 text-center text-[17px] text-graphite">To stop future updates, go to Family.</p>}
     </div>
   );
 }
@@ -262,7 +269,7 @@ export function RideSheet() {
                       Texted {family.first}, {family.phone}
                     </div>
                     <p className="mt-2 text-[18px] leading-snug">
-                      "{family.first === "Sarah" ? "Mom" : "Margaret"} asks for a ride to {destName}, {ride.when === "now" ? "now" : "later today"}. Reply YES or NO."
+                      "{family.first === "Sarah" ? "Mom" : "Margaret"} asks for a ride from {from} to {destName}, {ride.when === "now" ? "now" : "later today"}. Reply YES or NO."
                     </p>
                   </div>
                 )}
@@ -354,7 +361,7 @@ export function Result() {
   );
 
   return (
-    <Screen speech={`${copy.title} ${d.note}`}>
+    <Screen speech={`${copy.title} ${d.note} Next steps: ${d.plan.map((p) => `${p}. ${planDetail[p] ?? ""}`).join(" ")} Questions? Call ${specialist.first}'s office at ${offices.dana}.`}>
       <motion.h1
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
