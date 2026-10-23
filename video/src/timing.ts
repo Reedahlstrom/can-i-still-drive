@@ -1,7 +1,66 @@
-import cues from "../public/vo/cues.json";
-import durations from "../public/vo/durations.json";
-import script from "../script.json";
+import cuesEn from "../public/vo/cues.json";
+import durationsEn from "../public/vo/durations.json";
+import cuesJa from "../public/vo-ja/cues.json";
+import durationsJa from "../public/vo-ja/durations.json";
+import scriptEn from "../script.json";
+import scriptJa from "../script.ja.json";
+import { LANG } from "./lang";
 import { FPS } from "./theme";
+
+const ja = LANG === "ja";
+const script = ja ? scriptJa : scriptEn;
+const durations = ja ? durationsJa : durationsEn;
+const cues = ja ? cuesJa : cuesEn;
+
+/** Scenes cue on English phrases; in Japanese each maps to the words where that moment is spoken. */
+const CUES_JA: Partial<Record<SceneId, Record<string, string>>> = {
+  open: { "Can I still drive?": "まだ運転できる" },
+  problem: {
+    "fifty-two million": "アメリカでは",
+    "Yet only a few hundred": "しかし",
+    "And the evidence": "さらに",
+    "in the doctor's notes": "医師の記録",
+    "at the pharmacy": "薬局",
+    "in last year's eye exam": "昨年の眼科検査",
+    "So decisions come late": "そのため",
+  },
+  solution: {
+    "brings it together": "一つの記録にまとめます",
+    "her health record": "本人の健康記録",
+    "her own answers": "本人の回答",
+    "simulator drives chosen": "そして本人のために",
+    "A clinician reviews": "医療専門職が",
+    "signs one plan": "一つのプランに署名",
+  },
+  home: { "connects her health record": "ヘルスキーで", "chooses exactly what to share": "何を共有するか", "four short questions": "運転について" },
+  checkin: { "she checks in": "スマートフォンで", "On the clinician's iPad": "医療専門職のアイパッド", "what matters most": "大事なことから" },
+  assign: {
+    "assigns the drives": "必要な走行を",
+    "Brake reaction": "新しい睡眠薬があるので",
+    "A night drive in low light": "白内障があるので",
+    "Left turns, where": "そして、ヒヤリとしやすい",
+    "Margaret sees which drives": "マーガレットさんにも",
+  },
+  review: {
+    "what was measured": "測定した内容",
+    "DriverScore drafts": "ドライバースコアは",
+    "shows its reasoning": "その理由",
+    "The clinician makes the decision": "判断するのは",
+    "edits the note": "メッセージを直して",
+    "and signs": "署名します",
+  },
+  clear: { "She's clear to drive": "運転を続けて大丈夫", "Each drive is explained": "各走行の結果", "her next steps": "次にすること" },
+  outcomes: {
+    "Clear.": "運転可。",
+    "Drive with conditions": "日中のみなどの",
+    "Pause and reassess": "治療できる問題",
+    "And time to stop": "そして、運転中止",
+    "Many causes can be treated": "原因の多くは",
+  },
+  stop: { "explains why, in person": "対面で", "Then her plan leads": "そのうえで", "a ride with her daughter": "娘さんの送迎", "a taxi": "タクシー", "a senior shuttle": "シニア向け" },
+  trust: { "The clinician always decides": "判断するのは常に", "Margaret controls what she shares": "共有する内容", "her records are never sold": "記録が販売", "DriverScore never reports": "ドライバースコアがみずから" },
+  close: { "One clinician-signed plan": "すべての高齢ドライバー" },
+};
 
 export type SceneId =
   | "open" | "problem" | "solution" | "home" | "checkin" | "assign" | "drive"
@@ -30,10 +89,11 @@ export const sceneFrames = (id: SceneId) => Math.ceil(Math.max(LEAD + dur[id] + 
 const wordStarts = cues as Record<SceneId, [number, number][]>;
 
 /** Frame within a scene where a phrase is spoken. */
-export function at(id: SceneId, phrase: string, offset = 0) {
+export function at(id: SceneId, english: string, offset = 0) {
   const t = text[id];
-  const i = t.indexOf(phrase);
-  if (i < 0) throw new Error(`Phrase not found in ${id}: ${phrase}`);
+  const phrase = ja ? CUES_JA[id]?.[english] : english;
+  const i = phrase ? t.indexOf(phrase) : -1;
+  if (i < 0) throw new Error(`Phrase not found in ${id}: ${english}${ja ? ` (${phrase})` : ""}`);
   const words = wordStarts[id];
   // The word the phrase starts on; without measured cues, estimate from its position in the line.
   const hit = words?.filter(([c]) => c <= i).pop();

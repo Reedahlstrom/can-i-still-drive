@@ -2,6 +2,7 @@ import { useEffect, useRef } from "react";
 import type { DriveId } from "../data/drives";
 import type { DriveRaw } from "../lib/score";
 import { driveFrame } from "./engine/drives";
+import { useT } from "../i18n/useT";
 import { getEngine, getLiveEngine, type Engine, type View } from "./engine/engine";
 import { drawHud } from "./hud";
 import { REACTION, driveLength, driveSeconds, segmentAt } from "./timeline";
@@ -69,6 +70,7 @@ export function SimCanvas({
 }) {
   const ref = useRef<HTMLCanvasElement>(null);
   const host = useRef<HTMLDivElement>(null);
+  const t = useT();
   const state = useRef({ simStart, speed, assigned, raw, liveReaction });
   state.current = { simStart, speed, assigned, raw, liveReaction };
 
@@ -127,7 +129,7 @@ export function SimCanvas({
 
   return (
     <div ref={host} className={`relative h-full w-full overflow-hidden ${className}`}>
-      <canvas ref={ref} onPointerDown={brake} className="absolute inset-0 z-10 block h-full w-full touch-none" aria-label="Simulator view" role="img" />
+      <canvas ref={ref} onPointerDown={brake} className="absolute inset-0 z-10 block h-full w-full touch-none" aria-label={t("Simulator view")} data-capture="sim" role="img" />
     </div>
   );
 }

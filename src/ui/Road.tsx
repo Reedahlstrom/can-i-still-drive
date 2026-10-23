@@ -1,5 +1,6 @@
 import { animate, motion, useMotionValue, useReducedMotion, useTransform } from "motion/react";
 import { useEffect, useId, useRef, useState } from "react";
+import { tr } from "../i18n";
 
 /** Top-down car, pointing right. */
 export function CarTop({ width = 30, color = "#F4B400" }: { width?: number; color?: string }) {
@@ -17,7 +18,7 @@ export function RoadProgress({ steps, current }: { steps: string[]; current: num
   const reduce = useReducedMotion();
   const frac = steps.length > 1 ? current / (steps.length - 1) : 0;
   return (
-    <div className="relative h-8 w-full" role="progressbar" aria-valuemin={1} aria-valuemax={steps.length} aria-valuenow={current + 1} aria-valuetext={`Step ${current + 1} of ${steps.length}: ${steps[current]}`}>
+    <div className="relative h-8 w-full" role="progressbar" aria-valuemin={1} aria-valuemax={steps.length} aria-valuenow={current + 1} aria-valuetext={tr("Step {n} of {total}: {name}", { n: current + 1, total: steps.length, name: steps[current] })}>
       <div className="absolute inset-x-0 top-1/2 h-[10px] -translate-y-1/2 overflow-hidden rounded-full bg-asphalt">
         <div
           className="absolute inset-x-1.5 top-1/2 h-[2px] -translate-y-1/2"

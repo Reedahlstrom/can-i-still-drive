@@ -59,7 +59,7 @@ export type Simulator = { id: string; name: string; room: string; status: "ready
 
 export const simulators: Simulator[] = [
   { id: "sim1", name: "Simulator 1", room: "Room 204", status: "ready" },
-  { id: "sim2", name: "Simulator 2", room: "Room 206", status: "busy", note: "In use until 11:15" },
+  { id: "sim2", name: "Simulator 2", room: "Room 206", status: "busy", note: "in use until 11:15" },
 ];
 
 export type Source = { id: string; name: string; kind: string; counts: string };

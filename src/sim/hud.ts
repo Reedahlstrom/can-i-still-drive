@@ -1,4 +1,5 @@
 import { driveById } from "../data/drives";
+import { tr, units } from "../i18n";
 import type { DriveRaw } from "../lib/score";
 import type { Frame } from "./engine/drives";
 import type { View } from "./engine/engine";
@@ -7,8 +8,8 @@ import { FOD_TARGETS, LEFT_CRASH, NIGHT_HAZARDS, REACTION, SEG, fodCaught, type 
 
 // Everything drawn over the 3D view: the drive label, speed, signals, test targets, headlights and fades.
 
-const DISPLAY = `"Overpass Variable", "Atkinson Hyperlegible Next Variable", sans-serif`;
-const BODY = `"Atkinson Hyperlegible Next Variable", sans-serif`;
+const DISPLAY = `"Overpass Variable", "Atkinson Hyperlegible Next Variable", "Noto Sans JP Variable", sans-serif`;
+const BODY = `"Atkinson Hyperlegible Next Variable", "Noto Sans JP Variable", sans-serif`;
 const SIGNAL = "#F4B400";
 
 function rr(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number) {
@@ -157,18 +158,19 @@ export function drawHud(
   }
 
   // Speed and turn signal on the dash.
-  const mph = Math.round(f.v / 0.44704);
+  const mph = f.v / 0.44704;
+  const speedText = units.speed(mph);
   const sx = W * 0.5 + H * 0.36;
   const sy = H * 0.955;
   ctx.textBaseline = "alphabetic";
   ctx.textAlign = "right";
   ctx.font = `800 ${62 * u}px ${DISPLAY}`;
   ctx.fillStyle = "rgba(255,255,255,0.94)";
-  ctx.fillText(String(mph), sx, sy);
+  ctx.fillText(speedText, sx, sy);
   ctx.textAlign = "left";
   ctx.font = `600 ${22 * u}px ${BODY}`;
   ctx.fillStyle = "rgba(255,255,255,0.55)";
-  ctx.fillText("mph", sx + 8 * u, sy);
+  ctx.fillText(units.speedUnit(), sx + 8 * u, sy);
   if (f.signal && t % 0.72 < 0.4) {
     const ax = f.signal < 0 ? W * 0.5 - H * 0.36 : sx + 70 * u;
     const ay = sy - 22 * u;
@@ -187,7 +189,7 @@ export function drawHud(
     ctx.font = `700 ${34 * u}px ${BODY}`;
     ctx.textAlign = "center";
     ctx.fillStyle = "#ffffff";
-    ctx.fillText("Tap to brake", W / 2, H * 0.74);
+    ctx.fillText(tr("Tap to brake"), W / 2, H * 0.74);
   }
   if (seg.id === "reaction" && reaction.measured !== null && t > REACTION.red && t < REACTION.green + 1) {
     ctx.font = `800 ${52 * u}px ${DISPLAY}`;
@@ -206,8 +208,8 @@ export function drawHud(
   }
 
   // Which drive this is.
-  const name = driveById[seg.id].name;
-  const count = `Drive ${seg.index + 1} of ${seg.count}`;
+  const name = tr(driveById[seg.id].name);
+  const count = tr("Drive {n} of {total}", { n: seg.index + 1, total: seg.count });
   ctx.textAlign = "left";
   ctx.textBaseline = "middle";
   ctx.font = `600 ${27 * u}px ${BODY}`;

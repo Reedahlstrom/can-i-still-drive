@@ -11,8 +11,10 @@ docs/source/
 # Video build outputs and generated media
 video/out/
 video/public/vo/
+video/public/vo-ja/
 video/public/captures/
 video/public/music/
 video/.venv/
 video/public/pad.wav
 video/public/shots/
+video/public/shots-ja/

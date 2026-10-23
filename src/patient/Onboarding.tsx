@@ -1,5 +1,6 @@
 import { useAnimationFrame, useReducedMotion, motion } from "motion/react";
 import { useEffect, useRef, useState } from "react";
+import { useT } from "../i18n/useT";
 import { useDemo } from "../state/store";
 import { DriverScoreWordmark } from "../ui/Brand";
 import { Button } from "../ui/primitives";
@@ -47,7 +48,9 @@ function DrivingRoad() {
 
 export function Welcome() {
   const set = useDemo((s) => s.set);
-  useReadAloud("Can I still drive? A few simulator drives, chosen for you by a driving specialist. You'll leave with a result and a plan, shared only with you and your doctor.");
+  const t = useT();
+  const lead = t("A few simulator drives, chosen for you by a driving specialist. You'll leave with a result and a plan, shared only with you and your doctor.");
+  useReadAloud(`${t("Can I still drive?")} ${lead}`);
   return (
     <div className="relative flex h-full flex-col overflow-hidden bg-asphalt text-white">
       <div className="absolute inset-x-0 top-[17%] bottom-0">
@@ -58,12 +61,10 @@ export function Welcome() {
         <DriverScoreWordmark size={30} light />
       </div>
       <div className="relative mt-auto px-6 pb-[calc(var(--safe-bottom,0px)+18px)]">
-        <h1 className="font-display text-[46px] leading-[1.02] font-extrabold tracking-[-0.02em]">Can I still drive?</h1>
-        <p className="mt-4 text-[20px] leading-[1.45] text-white/75">
-          A few simulator drives, chosen for you by a driving specialist. You'll leave with a result and a plan, shared only with you and your doctor.
-        </p>
+        <h1 className="font-display text-[46px] leading-[1.02] font-extrabold tracking-[-0.02em]">{t("Can I still drive?")}</h1>
+        <p className="mt-4 text-[20px] leading-[1.45] text-white/75">{lead}</p>
         <Button variant="signal" className="mt-8 w-full" onClick={() => set({ patientStep: "details" })}>
-          Get started
+          {t("Get started")}
         </Button>
       </div>
     </div>
@@ -86,17 +87,18 @@ function Field({ label, value, onChange }: { label: string; value: string; onCha
 export function Details() {
   const set = useDemo((s) => s.set);
   const account = useDemo((s) => s.account);
+  const t = useT();
   return (
     <Screen
-      speech="Confirm your details. Dr. Patel's office sent your invitation. Check that everything is right."
-      footer={<Button onClick={() => set({ patientStep: "code" })}>Send code</Button>}
+      speech={`${t("Confirm your details")}. ${t("Dr. Patel's office sent your invitation. Check that everything is right.")}`}
+      footer={<Button onClick={() => set({ patientStep: "code" })}>{t("Send code")}</Button>}
     >
-      <Title>Confirm your details</Title>
-      <Lead>Dr. Patel's office sent your invitation. Check that everything is right.</Lead>
+      <Title>{t("Confirm your details")}</Title>
+      <Lead>{t("Dr. Patel's office sent your invitation. Check that everything is right.")}</Lead>
       <div className="mt-7 flex flex-col gap-5">
-        <Field label="Name" value={account.name} onChange={(v) => set({ account: { ...account, name: v } })} />
-        <Field label="Date of birth" value={account.dob} onChange={(v) => set({ account: { ...account, dob: v } })} />
-        <Field label="Mobile number" value={account.phone} onChange={(v) => set({ account: { ...account, phone: v } })} />
+        <Field label={t("Name")} value={t(account.name)} onChange={(v) => set({ account: { ...account, name: v } })} />
+        <Field label={t("Date of birth")} value={t(account.dob)} onChange={(v) => set({ account: { ...account, dob: v } })} />
+        <Field label={t("Mobile number")} value={account.phone} onChange={(v) => set({ account: { ...account, phone: v } })} />
       </div>
     </Screen>
   );
@@ -108,6 +110,7 @@ export function Code() {
   const set = useDemo((s) => s.set);
   const phone = useDemo((s) => s.account.phone);
   const speed = useDemo((s) => s.speed);
+  const t = useT();
   const [n, setN] = useState(0);
   useEffect(() => {
     const t = (ms: number) => ms / speed;
@@ -119,10 +122,10 @@ export function Code() {
     };
   }, [set, speed]);
   return (
-    <Screen speech={`Enter the code. We texted a 6-digit code to ${phone}.`}>
-      <Title>Enter the code</Title>
-      <Lead>We texted a 6-digit code to {phone}.</Lead>
-      <div className="mt-8 flex justify-between gap-2" aria-label="Verification code">
+    <Screen speech={`${t("Enter the code")}. ${t("We texted a 6-digit code to {phone}.", { phone })}`}>
+      <Title>{t("Enter the code")}</Title>
+      <Lead>{t("We texted a 6-digit code to {phone}.", { phone })}</Lead>
+      <div className="mt-8 flex justify-between gap-2" aria-label={t("Verification code")}>
         {CODE.split("").map((c, i) => (
           <div
             key={i}

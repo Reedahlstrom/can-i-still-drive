@@ -3,6 +3,7 @@
 // Missing is not zero: drives not completed leave the total and are reported.
 
 import { driveById, sortDrives, type DriveId } from "../data/drives";
+import { tr } from "../i18n";
 
 export type Outcome = "clear" | "conditions" | "pause" | "stop";
 
@@ -45,63 +46,87 @@ export type ScoreResult = {
 };
 
 const s2 = (ms: number) => (ms / 1000).toFixed(2);
+const lower = (s: string) => s.charAt(0).toLowerCase() + s.slice(1);
 
+// Every sentence is a template in the demo's language; numbers are filled in.
 function scoreDrive(id: DriveId, r: DriveRaw): Omit<DriveScore, "id" | "name" | "max" | "done"> {
   switch (id) {
     case "reaction": {
       const n = r.reaction.trials.length;
       const ms = n ? r.reaction.trials.reduce((a, b) => a + b, 0) / n : 0;
       const avg = s2(ms);
-      const metrics = n === 0 ? "No brake response recorded." : n === 1 ? `One trial: ${avg} s.` : `${n} trials: ${r.reaction.trials.map(s2).join(", ")} s. Average ${avg} s.`;
-      const rule = "10 at 0.75 s or faster, 8 to 0.90 s, 6 to 1.10 s, 4 to 1.30 s, 2 if slower. Running the red light is a hard stop.";
-      if (r.reaction.ranRed) return { points: 0, metrics, rule, reason: "Ran the red light.", patient: "In the brake reaction drive you went through the red light.", hardStop: "Ran the red light in the brake reaction drive" };
+      const metrics =
+        n === 0
+          ? tr("No brake response recorded.")
+          : n === 1
+            ? tr("One trial: {avg} s.", { avg })
+            : tr("{n} trials: {list} s. Average {avg} s.", { n, list: r.reaction.trials.map(s2).join(tr(", ")), avg });
+      const rule = tr("10 at 0.75 s or faster, 8 to 0.90 s, 6 to 1.10 s, 4 to 1.30 s, 2 if slower. Running the red light is a hard stop.");
+      if (r.reaction.ranRed)
+        return { points: 0, metrics, rule, reason: tr("Ran the red light."), patient: tr("In the brake reaction drive you went through the red light."), hardStop: tr("Ran the red light in the brake reaction drive") };
       const points = ms <= 750 ? 10 : ms <= 900 ? 8 : ms <= 1100 ? 6 : ms <= 1300 ? 4 : 2;
-      const band = ms <= 750 ? "fast" : ms <= 900 ? "normal" : ms <= 1100 ? "slower than normal" : "slow";
-      const patient = ms <= 900 ? `You braked quickly: ${avg} seconds on average.` : ms <= 1100 ? `Your braking was a little slow: ${avg} seconds on average.` : `Your braking was slow: ${avg} seconds on average.`;
-      return { points, metrics, rule, reason: `Average ${avg} s, ${band}.`, patient };
+      const band = tr(ms <= 750 ? "fast" : ms <= 900 ? "normal" : ms <= 1100 ? "slower than normal" : "slow");
+      const patient =
+        ms <= 900
+          ? tr("You braked quickly: {avg} seconds on average.", { avg })
+          : ms <= 1100
+            ? tr("Your braking was a little slow: {avg} seconds on average.", { avg })
+            : tr("Your braking was slow: {avg} seconds on average.", { avg });
+      return { points, metrics, rule, reason: tr("Average {avg} s, {band}.", { avg, band }), patient };
     }
     case "right": {
       const points = Math.round((r.right.checks / 9) * 10);
+      const missed = r.right.missed ? tr(r.right.missed) : "";
       return {
         points,
-        metrics: `3 turns, 3 checks each: full stop, look both ways, under 15 mph. Passed ${r.right.checks} of 9.${r.right.missed ? ` Missed: ${r.right.missed}.` : ""}`,
-        rule: "Checks passed out of 9, scaled to 10.",
-        reason: `${r.right.checks} of 9 checks.`,
-        patient: r.right.checks >= 8 ? "Your right turns were careful." : `You missed some checks on right turns: ${r.right.missed?.toLowerCase() ?? "stops and scanning"}.`,
+        metrics: tr("3 turns, 3 checks each: full stop, look both ways, under 15 mph. Passed {n} of 9.", { n: r.right.checks }) + (missed ? tr(" Missed: {what}.", { what: missed }) : ""),
+        rule: tr("Checks passed out of 9, scaled to 10."),
+        reason: tr("{n} of 9 checks.", { n: r.right.checks }),
+        patient: r.right.checks >= 8 ? tr("Your right turns were careful.") : tr("You missed some checks on right turns: {what}.", { what: missed ? lower(missed) : tr("stops and scanning") }),
       };
     }
     case "left": {
       const g = r.left.shortestGap.toFixed(1);
-      const metrics = `3 turns. Checks passed ${r.left.checks} of 9. Shortest gap accepted ${g} s.`;
-      const rule = "Checks out of 9, scaled to 10. Minus 2 for taking a gap under 4 s. A collision is a hard stop and scores 0.";
+      const metrics = tr("3 turns. Checks passed {n} of 9. Shortest gap accepted {g} s.", { n: r.left.checks, g });
+      const rule = tr("Checks out of 9, scaled to 10. Minus 2 for taking a gap under 4 s. A collision is a hard stop and scores 0.");
       if (r.left.collision)
-        return { points: 0, metrics, rule, reason: `Turned into an oncoming car at turn 2 (gap ${g} s).`, patient: "At one left turn you turned in front of an oncoming car.", hardStop: "Collision during left turn 2" };
+        return {
+          points: 0,
+          metrics,
+          rule,
+          reason: tr("Turned into an oncoming car at turn 2 (gap {g} s).", { g }),
+          patient: tr("At one left turn you turned in front of an oncoming car."),
+          hardStop: tr("Collision during left turn 2"),
+        };
       const unsafe = r.left.shortestGap < 4;
       const points = Math.max(0, Math.round((r.left.checks / 9) * 10) - (unsafe ? 2 : 0));
       const close = r.left.shortestGap < 4.5;
       const patient = unsafe
-        ? "On one left turn you took a gap that was too short."
+        ? tr("On one left turn you took a gap that was too short.")
         : r.left.checks < 8
-          ? `On left turns you missed some checks${close ? ", and one gap was close" : ""}.`
+          ? close
+            ? tr("On left turns you missed some checks, and one gap was close.")
+            : tr("On left turns you missed some checks.")
           : close
-            ? "Your left turns were mostly safe, though one gap was close."
-            : "You waited for safe gaps on left turns.";
+            ? tr("Your left turns were mostly safe, though one gap was close.")
+            : tr("You waited for safe gaps on left turns.");
       return {
         points,
         metrics,
         rule,
-        reason: `${r.left.checks} of 9 checks. ${unsafe ? `Took a ${g} s gap, under the 4 s rule.` : `Shortest gap ${g} s, above the 4 s rule.`}`,
+        reason: `${tr("{n} of 9 checks.", { n: r.left.checks })} ${unsafe ? tr("Took a {g} s gap, under the 4 s rule.", { g }) : tr("Shortest gap {g} s, above the 4 s rule.", { g })}`,
         patient,
       };
     }
     case "lane": {
       const points = Math.round((r.lane.checks / 12) * 10);
+      const missed = r.lane.missed ? tr(r.lane.missed) : "";
       return {
         points,
-        metrics: `3 changes, 4 checks each: mirror, signal, blind spot, 2 s gap. Passed ${r.lane.checks} of 12.${r.lane.missed ? ` Missed: ${r.lane.missed}.` : ""}`,
-        rule: "Checks passed out of 12, scaled to 10.",
-        reason: `${r.lane.checks} of 12 checks.`,
-        patient: r.lane.checks >= 10 ? "Your lane changes were smooth and well checked." : `Lane changes were harder: ${r.lane.missed?.toLowerCase() ?? "some checks were missed"}.`,
+        metrics: tr("3 changes, 4 checks each: mirror, signal, blind spot, 2 s gap. Passed {n} of 12.", { n: r.lane.checks }) + (missed ? tr(" Missed: {what}.", { what: missed }) : ""),
+        rule: tr("Checks passed out of 12, scaled to 10."),
+        reason: tr("{n} of 12 checks.", { n: r.lane.checks }),
+        patient: r.lane.checks >= 10 ? tr("Your lane changes were smooth and well checked.") : tr("Lane changes were harder: {what}.", { what: missed ? lower(missed) : tr("some checks were missed") }),
       };
     }
     case "fod": {
@@ -109,10 +134,10 @@ function scoreDrive(id: DriveId, r: DriveRaw): Omit<DriveScore, "id" | "name" | 
       const points = Math.max(0, Math.round((r.fod.spotted / 8) * 10) - (slow ? 1 : 0));
       return {
         points,
-        metrics: `${r.fod.spotted} of 8 objects spotted at the edges of the screen. Average response ${s2(r.fod.avgMs)} s.`,
-        rule: "Spotted out of 8, scaled to 10. Minus 1 if the average response is slower than 1.2 s.",
-        reason: `${r.fod.spotted} of 8 spotted${slow ? ", slow responses" : ""}.`,
-        patient: r.fod.spotted >= 7 ? "You spotted almost everything at the edges of your vision." : `You missed ${8 - r.fod.spotted} of 8 objects at the edges of your vision.`,
+        metrics: tr("{n} of 8 objects spotted at the edges of the screen. Average response {avg} s.", { n: r.fod.spotted, avg: s2(r.fod.avgMs) }),
+        rule: tr("Spotted out of 8, scaled to 10. Minus 1 if the average response is slower than 1.2 s."),
+        reason: slow ? tr("{n} of 8 spotted, slow responses.", { n: r.fod.spotted }) : tr("{n} of 8 spotted.", { n: r.fod.spotted }),
+        patient: r.fod.spotted >= 7 ? tr("You spotted almost everything at the edges of your vision.") : tr("You missed {n} of 8 objects at the edges of your vision.", { n: 8 - r.fod.spotted }),
       };
     }
     case "night": {
@@ -120,23 +145,24 @@ function scoreDrive(id: DriveId, r: DriveRaw): Omit<DriveScore, "id" | "name" | 
       const points = Math.max(0, Math.round((r.night.spotted / 5) * 10) - (drift ? 1 : 0));
       return {
         points,
-        metrics: `${r.night.spotted} of 5 hazards spotted in low light. Lane drift up to ${r.night.drift.toFixed(1)} ft.`,
-        rule: "Spotted out of 5, scaled to 10. Minus 1 if lane drift is over 1.5 ft.",
-        reason: `${r.night.spotted} of 5 hazards spotted${drift ? ", drifted in the lane" : ""}.`,
-        patient: r.night.spotted >= 4 ? "At night you spotted hazards well, even in low light." : `At night, low light made it hard to see: you spotted ${r.night.spotted} of 5 hazards.`,
+        metrics: tr("{n} of 5 hazards spotted in low light. Lane drift up to {ft} ft.", { n: r.night.spotted, ft: r.night.drift.toFixed(1), cm: Math.round(r.night.drift * 30.48) }),
+        rule: tr("Spotted out of 5, scaled to 10. Minus 1 if lane drift is over 1.5 ft."),
+        reason: drift ? tr("{n} of 5 hazards spotted, drifted in the lane.", { n: r.night.spotted }) : tr("{n} of 5 hazards spotted.", { n: r.night.spotted }),
+        patient: r.night.spotted >= 4 ? tr("At night you spotted hazards well, even in low light.") : tr("At night, low light made it hard to see: you spotted {n} of 5 hazards.", { n: r.night.spotted }),
       };
     }
     case "city": {
-      const v = r.city.violations;
-      const metrics = v.length ? `Errors: ${v.join("; ")}.` : "No errors. Signs, signals and speed all followed.";
-      const rule = "Starts at 10, minus 2 per error. Running a stop sign or red light is a hard stop.";
-      if (r.city.ranStop) return { points: 0, metrics, rule, reason: "Rolled through a stop sign.", patient: "In town you rolled through a stop sign.", hardStop: "Rolled through a stop sign in the city drive" };
+      const v = r.city.violations.map((x) => tr(x));
+      const metrics = v.length ? tr("Errors: {list}.", { list: v.join(tr("; ")) }) : tr("No errors. Signs, signals and speed all followed.");
+      const rule = tr("Starts at 10, minus 2 per error. Running a stop sign or red light is a hard stop.");
+      if (r.city.ranStop)
+        return { points: 0, metrics, rule, reason: tr("Rolled through a stop sign."), patient: tr("In town you rolled through a stop sign."), hardStop: tr("Rolled through a stop sign in the city drive") };
       return {
         points: Math.max(0, 10 - 2 * v.length),
         metrics,
         rule,
-        reason: v.length ? `${v.length} ${v.length === 1 ? "error" : "errors"}.` : "No errors.",
-        patient: v.length ? `In town: ${v[0].charAt(0).toLowerCase()}${v[0].slice(1)}.` : "Your city driving followed every sign and signal.",
+        reason: v.length ? (v.length === 1 ? tr("1 error.") : tr("{n} errors.", { n: v.length })) : tr("No errors."),
+        patient: v.length ? tr("In town: {what}.", { what: lower(v[0]) }) : tr("Your city driving followed every sign and signal."),
       };
     }
   }
@@ -147,18 +173,21 @@ const outcomeName: Record<Outcome, string> = { clear: "Clear", conditions: "Driv
 export function score(raw: DriveRaw, assignedIds: DriveId[], completed?: number, hardStopSeen = false): ScoreResult {
   const assigned = sortDrives(assignedIds);
   const done = Math.min(completed ?? assigned.length, assigned.length);
+  const notDone = tr("Not completed");
 
   const drives: DriveScore[] = assigned.map((id, i) => {
-    const base = { id, name: driveById[id].name, max: 10 };
-    if (id === "reaction" && raw.reaction.trials.length === 0 && !raw.reaction.ranRed)
-      return { ...base, done: false, points: 0, max: 0, metrics: "No brake response recorded", rule: "", reason: "No brake response recorded", patient: "Not completed" };
+    const base = { id, name: tr(driveById[id].name), max: 10 };
+    if (id === "reaction" && raw.reaction.trials.length === 0 && !raw.reaction.ranRed) {
+      const none = tr("No brake response recorded");
+      return { ...base, done: false, points: 0, max: 0, metrics: none, rule: "", reason: none, patient: notDone };
+    }
     if (i < done) return { ...base, done: true, ...scoreDrive(id, raw) };
     // A hard stop already seen before the drive was stopped still counts.
     if (i === done && hardStopSeen) {
       const s = scoreDrive(id, raw);
       if (s.hardStop) return { ...base, done: true, ...s };
     }
-    return { ...base, done: false, points: 0, max: 0, metrics: "Not completed", rule: "", reason: "Not completed", patient: "Not completed" };
+    return { ...base, done: false, points: 0, max: 0, metrics: notDone, rule: "", reason: notDone, patient: notDone };
   });
 
   const scored = drives.filter((d) => d.done);
@@ -167,9 +196,16 @@ export function score(raw: DriveRaw, assignedIds: DriveId[], completed?: number,
 
   const findings: Finding[] = [];
   for (const d of scored) if (d.hardStop) findings.push({ kind: "hardStop", text: d.hardStop });
-  if (done < assigned.length) findings.push({ kind: "flag", text: `Stopped during drive ${done + 1} of ${assigned.length}. The score covers the ${scored.length} ${scored.length === 1 ? "drive" : "drives"} with results.` });
-  if (drives.some((d) => d.id === "reaction" && !d.done && assigned.indexOf("reaction") < done)) findings.push({ kind: "flag", text: "Brake reaction: no response recorded. Left out of the score." });
-  for (const d of scored) if (!d.hardStop && d.points < 6) findings.push({ kind: "flag", text: `${d.name}: ${d.points} of 10. ${d.reason}` });
+  if (done < assigned.length)
+    findings.push({
+      kind: "flag",
+      text:
+        scored.length === 1
+          ? tr("Stopped during drive {n} of {total}. The score covers the 1 drive with results.", { n: done + 1, total: assigned.length })
+          : tr("Stopped during drive {n} of {total}. The score covers the {k} drives with results.", { n: done + 1, total: assigned.length, k: scored.length }),
+    });
+  if (drives.some((d) => d.id === "reaction" && !d.done && assigned.indexOf("reaction") < done)) findings.push({ kind: "flag", text: tr("Brake reaction: no response recorded. Left out of the score.") });
+  for (const d of scored) if (!d.hardStop && d.points < 6) findings.push({ kind: "flag", text: tr("{name}: {p} of 10. {reason}", { name: d.name, p: d.points, reason: d.reason }) });
 
   const byId = Object.fromEntries(scored.map((d) => [d.id, d])) as Partial<Record<DriveId, DriveScore>>;
   const hard = scored.filter((d) => d.hardStop);
@@ -180,14 +216,21 @@ export function score(raw: DriveRaw, assignedIds: DriveId[], completed?: number,
   const logic: LogicStep[] = [];
   let suggested: Outcome;
   // A hard stop decides on its own, even when the drive ended early.
-  logic.push(hard.length ? { text: `Hard stop: ${hard.map((d) => d.hardStop).join("; ")}`, pass: false } : { text: "No hard stops", pass: true });
+  logic.push(hard.length ? { text: tr("Hard stop: {list}", { list: hard.map((d) => d.hardStop).join(tr("; ")) }), pass: false } : { text: tr("No hard stops"), pass: true });
   if (hard.length) suggested = "stop";
   else if (scored.length < 3) {
-    logic.push({ text: `${scored.length} of ${assigned.length} ${assigned.length === 1 ? "drive" : "drives"} completed: at least 3 needed to decide`, pass: false });
+    logic.push({
+      text: assigned.length === 1 ? tr("{k} of 1 drive completed: at least 3 needed to decide", { k: scored.length }) : tr("{k} of {n} drives completed: at least 3 needed to decide", { k: scored.length, n: assigned.length }),
+      pass: false,
+    });
     suggested = "pause";
   } else {
     if (visionDrives.length)
-      logic.push(visionLow.length ? { text: `Vision drives below 5: ${visionLow.map((d) => `${d.name} ${d.points}`).join(", ")}`, pass: false } : { text: "Vision drives at 5 or above", pass: true });
+      logic.push(
+        visionLow.length
+          ? { text: tr("Vision drives below 5: {list}", { list: visionLow.map((d) => `${d.name} ${d.points}`).join(tr(", ")) }), pass: false }
+          : { text: tr("Vision drives at 5 or above"), pass: true },
+      );
     if (visionLow.length) suggested = "pause";
     else if (total >= 85 && !anyBelow6) suggested = "clear";
     else if (total >= 70) suggested = "conditions";
@@ -196,11 +239,12 @@ export function score(raw: DriveRaw, assignedIds: DriveId[], completed?: number,
     if (!visionLow.length) {
       const band =
         total >= 85 && !anyBelow6 ? "85 or higher, no drive below 6" : total >= 85 ? "85 or higher, but a drive is below 6" : total >= 70 ? "70 to 84" : total >= 55 ? "55 to 69" : "below 55";
-      logic.push({ text: `DriverScore ${total}: ${band}`, pass: suggested === "clear" });
+      logic.push({ text: tr("DriverScore {total}: {band}", { total, band: tr(band) }), pass: suggested === "clear" });
     }
   }
-  logic.push({ text: `Suggests ${outcomeName[suggested]}`, pass: suggested === "clear" });
+  logic.push({ text: tr("Suggests {outcome}", { outcome: tr(outcomeName[suggested]) }), pass: suggested === "clear" });
 
+  // Conditions are kept as their English names (stable keys) and translated where shown.
   const conditions: string[] = [];
   if ((byId.night?.points ?? 10) < 7) conditions.push("Daylight only");
   if ((byId.lane?.points ?? 10) < 7) conditions.push("No highways");

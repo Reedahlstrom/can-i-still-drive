@@ -2,6 +2,7 @@ import { Check } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { useEffect, useRef, useState } from "react";
 import { patient, record, shareCategories, sources } from "../data/demo";
+import { useT } from "../i18n/useT";
 import { useDemo } from "../state/store";
 import { Avatar, HealthKeyLogo } from "../ui/Brand";
 import { Button, Group, Toggle } from "../ui/primitives";
@@ -9,16 +10,18 @@ import { Lead, Screen, Title } from "./Screen";
 
 export function HkIntro() {
   const set = useDemo((s) => s.set);
+  const t = useT();
+  const lead = t("Your specialist needs to see your conditions, medicines and eye exams. HealthKey gathers them from your doctors and pharmacy.");
   return (
     <Screen
-      speech="Connect your health record. Your specialist needs to see your conditions, medicines and eye exams. HealthKey gathers them from your doctors and pharmacy. You decide what's shared."
+      speech={`${t("Connect your health record")}. ${lead} ${t("You decide what's shared.")}`}
       footer={
         <>
           <Button variant="hk" onClick={() => set({ hkStep: "signin" })}>
-            Connect with HealthKey
+            {t("Connect with HealthKey")}
           </Button>
           <Button variant="quiet" onClick={() => set({ patientStep: "questions", questionIndex: 0 })}>
-            Not now
+            {t("Not now")}
           </Button>
         </>
       }
@@ -26,9 +29,9 @@ export function HkIntro() {
       <div className="mb-7 pt-1">
         <HealthKeyLogo height={34} />
       </div>
-      <Title>Connect your health record</Title>
-      <Lead>Your specialist needs to see your conditions, medicines and eye exams. HealthKey gathers them from your doctors and pharmacy.</Lead>
-      <Lead>You decide what's shared.</Lead>
+      <Title>{t("Connect your health record")}</Title>
+      <Lead>{lead}</Lead>
+      <Lead>{t("You decide what's shared.")}</Lead>
     </Screen>
   );
 }
@@ -36,6 +39,7 @@ export function HkIntro() {
 export function HkConnected() {
   const set = useDemo((s) => s.set);
   const hkShare = useDemo((s) => s.hkShare);
+  const t = useT();
   const rows = [
     { id: "conditions", label: "Conditions", n: record.conditions.length },
     { id: "medicines", label: "Medicines", n: record.medicines.length },
@@ -45,24 +49,24 @@ export function HkConnected() {
   ].filter((r) => hkShare[r.id]);
   return (
     <Screen
-      speech="Your record is connected. Your driving specialist will see these during your visit."
-      footer={<Button onClick={() => set({ patientStep: "questions", questionIndex: 0 })}>Continue</Button>}
+      speech={`${t("Your record is connected")}. ${t("Your driving specialist will see these during your visit.")}`}
+      footer={<Button onClick={() => set({ patientStep: "questions", questionIndex: 0 })}>{t("Continue")}</Button>}
     >
       <motion.div initial={{ scale: 0.6, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={{ type: "spring", stiffness: 300, damping: 18 }} className="mb-6 flex size-16 items-center justify-center rounded-full bg-hk text-white">
         <Check size={34} strokeWidth={3} />
       </motion.div>
-      <Title>Your record is connected</Title>
-      <Lead>Your driving specialist will see what you shared.</Lead>
+      <Title>{t("Your record is connected")}</Title>
+      <Lead>{t("Your driving specialist will see what you shared.")}</Lead>
       <Group className="mt-7">
         {rows.map((r) => (
           <div key={r.label} className="flex items-center justify-between px-5 py-4 text-[20px]">
-            <span>{r.label}</span>
+            <span>{t(r.label)}</span>
             <span className="font-display font-bold tnum">{r.n}</span>
           </div>
         ))}
       </Group>
       <div className="mt-5 flex items-center gap-2 px-1 text-[16px] text-graphite">
-        <span>From</span>
+        <span>{t("From")}</span>
         <HealthKeyLogo height={20} />
       </div>
     </Screen>
@@ -85,6 +89,7 @@ function SheetBody({ children }: { children: React.ReactNode }) {
 
 function Assembling({ onDone }: { onDone: () => void }) {
   const speed = useDemo((s) => s.speed);
+  const t = useT();
   const [done, setDone] = useState(0);
   const doneRef = useRef(onDone);
   doneRef.current = onDone;
@@ -99,7 +104,7 @@ function Assembling({ onDone }: { onDone: () => void }) {
   }, [speed]);
   return (
     <SheetBody>
-      <h2 className="font-display text-[28px] leading-tight font-extrabold">Gathering your records</h2>
+      <h2 className="font-display text-[28px] leading-tight font-extrabold">{t("Gathering your records")}</h2>
       <div className="mt-6 flex flex-col gap-3">
         {sources.map((s, i) => {
           const state = i < done ? "done" : i === done ? "working" : "waiting";
@@ -115,8 +120,8 @@ function Assembling({ onDone }: { onDone: () => void }) {
               )}
               <div className="relative flex items-center justify-between gap-3">
                 <div>
-                  <div className="text-[19px] font-semibold">{s.name}</div>
-                  <div className="text-[16px] text-graphite">{state === "done" ? s.counts : s.kind}</div>
+                  <div className="text-[19px] font-semibold">{t(s.name)}</div>
+                  <div className="text-[16px] text-graphite">{state === "done" ? t(s.counts) : t(s.kind)}</div>
                 </div>
                 <span className={`flex size-8 items-center justify-center rounded-full transition-colors ${state === "done" ? "bg-hk text-white" : "bg-white"}`}>
                   {state === "done" ? <Check size={18} strokeWidth={3} /> : state === "working" ? <Spinner /> : null}
@@ -147,6 +152,7 @@ export function HkSheet() {
   const hkShare = useDemo((s) => s.hkShare);
   const textScale = useDemo((s) => s.textScale);
   const account = useDemo((s) => s.account);
+  const t = useT();
   const finish = () => set({ hkStep: null, hkConnected: true, patientStep: "hk-connected" });
 
   return (
@@ -171,7 +177,7 @@ export function HkSheet() {
               <HealthKeyLogo height={28} />
               {hkStep !== "assembling" && (
                 <button className="h-10 rounded-lg px-2 text-[17px] font-semibold text-hk" onClick={() => set({ hkStep: null })}>
-                  Cancel
+                  {t("Cancel")}
                 </button>
               )}
             </div>
@@ -179,27 +185,25 @@ export function HkSheet() {
               <AnimatePresence mode="wait">
                 {hkStep === "signin" && (
                   <SheetBody key="signin">
-                    <h2 className="font-display text-[28px] leading-tight font-extrabold">Sign in to HealthKey</h2>
+                    <h2 className="font-display text-[28px] leading-tight font-extrabold">{t("Sign in to HealthKey")}</h2>
                     <div className="mt-6 flex items-center gap-4 rounded-2xl bg-hk-tint px-5 py-4">
                       <Avatar initials={patient.initials} size={52} tone="hk" />
                       <div>
-                        <div className="text-[20px] font-semibold">
-                          {account.name}
-                        </div>
-                        <div className="text-[16px] text-graphite">{account.phone}, verified</div>
+                        <div className="text-[20px] font-semibold">{t(account.name)}</div>
+                        <div className="text-[16px] text-graphite">{t("{phone}, verified", { phone: account.phone })}</div>
                       </div>
                     </div>
-                    <p className="mt-5 text-[18px] leading-relaxed text-graphite">Your records are private and never sold.</p>
+                    <p className="mt-5 text-[18px] leading-relaxed text-graphite">{t("Your records are private and never sold.")}</p>
                     <div className="mt-auto">
                       <Button variant="hk" className="w-full" onClick={() => set({ hkStep: "sources" })}>
-                        Continue as {account.name.split(" ")[0]}
+                        {t("Continue as {name}", { name: t(account.name.split(" ")[0]) })}
                       </Button>
                     </div>
                   </SheetBody>
                 )}
                 {hkStep === "sources" && (
                   <SheetBody key="sources">
-                    <h2 className="font-display text-[28px] leading-tight font-extrabold">We found your records</h2>
+                    <h2 className="font-display text-[28px] leading-tight font-extrabold">{t("We found your records")}</h2>
                     <div className="mt-6 flex flex-col gap-2.5">
                       {sources.map((s) => {
                         const on = hkSources.includes(s.id);
@@ -212,8 +216,8 @@ export function HkSheet() {
                             className="flex items-center justify-between gap-4 rounded-2xl bg-hk-tint px-5 py-4 text-left"
                           >
                             <div>
-                              <div className="text-[19px] font-semibold">{s.name}</div>
-                              <div className="text-[16px] text-graphite">{s.kind}</div>
+                              <div className="text-[19px] font-semibold">{t(s.name)}</div>
+                              <div className="text-[16px] text-graphite">{t(s.kind)}</div>
                             </div>
                             <span className={`flex size-7 shrink-0 items-center justify-center rounded-lg ${on ? "bg-hk text-white" : "border-2 border-line-strong bg-white"}`}>
                               {on && <Check size={18} strokeWidth={3} />}
@@ -224,26 +228,26 @@ export function HkSheet() {
                     </div>
                     <div className="mt-auto">
                       <Button variant="hk" className="w-full" disabled={!hkSources.length} onClick={() => set({ hkStep: "share" })}>
-                        Connect {hkSources.length} {hkSources.length === 1 ? "source" : "sources"}
+                        {hkSources.length === 1 ? t("Connect 1 source") : t("Connect {n} sources", { n: hkSources.length })}
                       </Button>
                     </div>
                   </SheetBody>
                 )}
                 {hkStep === "share" && (
                   <SheetBody key="share">
-                    <h2 className="font-display text-[28px] leading-tight font-extrabold">Share with DriverScore</h2>
-                    <p className="mt-3 text-[18px] leading-relaxed text-graphite">Only your driving specialist and Dr. Patel see this, for this assessment. You can stop sharing in your health record.</p>
+                    <h2 className="font-display text-[28px] leading-tight font-extrabold">{t("Share with DriverScore")}</h2>
+                    <p className="mt-3 text-[18px] leading-relaxed text-graphite">{t("Only your driving specialist and Dr. Patel see this, for this assessment. You can stop sharing in your health record.")}</p>
                     <div className="mt-5 divide-y divide-line rounded-2xl bg-hk-tint">
                       {shareCategories.map((c) => (
                         <div key={c.id} className="flex items-center justify-between px-5 py-3.5">
-                          <span className="text-[19px]">{c.label}</span>
-                          <Toggle tone="hk" label={c.label} on={!!hkShare[c.id]} onChange={(v) => set({ hkShare: { ...hkShare, [c.id]: v } })} />
+                          <span className="text-[19px]">{t(c.label)}</span>
+                          <Toggle tone="hk" label={t(c.label)} on={!!hkShare[c.id]} onChange={(v) => set({ hkShare: { ...hkShare, [c.id]: v } })} />
                         </div>
                       ))}
                     </div>
                     <div className="mt-auto pt-4">
                       <Button variant="hk" className="w-full" onClick={() => set({ hkStep: "assembling" })}>
-                        Share
+                        {t("Share")}
                       </Button>
                     </div>
                   </SheetBody>

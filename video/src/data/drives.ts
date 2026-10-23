@@ -1,4 +1,5 @@
 // The simulator drives a specialist can assign. Each runs on its own stretch of the simulator world.
+import { tr } from "../i18n";
 
 export type DriveId = "reaction" | "right" | "left" | "lane" | "fod" | "night" | "city";
 
@@ -29,12 +30,12 @@ export const sortDrives = (ids: DriveId[]) => DRIVES.map((d) => d.id).filter((id
 
 export type Recommendation = { id: DriveId; reasons: string[]; patientReason: string };
 
-/** Which drives the record and answers point to, with the reason for each. */
+/** Which drives the record and answers point to, with the reason for each, in the demo's language. */
 export function recommendDrives(input: { cataract: boolean; sleepMed: boolean; answers: Record<string, string | string[]> }): Recommendation[] {
   const avoid = (input.answers.avoid as string[] | undefined) ?? [];
   const incident = input.answers.incidents as string | undefined;
   const recs: Recommendation[] = [];
-  const add = (id: DriveId, reasons: string[], patientReason: string) => recs.push({ id, reasons, patientReason });
+  const add = (id: DriveId, reasons: string[], patientReason: string) => recs.push({ id, reasons: reasons.map((r) => tr(r)), patientReason: tr(patientReason) });
 
   add(
     "reaction",
@@ -43,7 +44,7 @@ export function recommendDrives(input: { cataract: boolean; sleepMed: boolean; a
   );
   add(
     "left",
-    ["A common crash type for older drivers", ...(incident && incident !== "No" ? [`Reports ${incident.toLowerCase()} in the past year`] : [])],
+    ["A common crash type for older drivers", ...(incident && incident !== "No" ? [incident === "A crash" ? "Reports a crash in the past year" : "Reports a close call in the past year"] : [])],
     "Left turns across traffic are where most close calls happen",
   );
   if (input.cataract || avoid.includes("Driving at night"))

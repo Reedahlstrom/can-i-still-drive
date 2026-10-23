@@ -1,11 +1,14 @@
 // Captures crisp app screens from the running dev server for the video.
-// Usage: node capture.mjs [baseUrl]   (default http://localhost:5181)
+// Usage: node capture.mjs [baseUrl] [--lang ja]   (default http://localhost:5181, English)
+// English screens go to public/shots/, Japanese to public/shots-ja/.
 import { chromium } from "playwright";
 import { mkdir, writeFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 
-const BASE = process.argv[2] ?? "http://localhost:5181";
-const OUT = fileURLToPath(new URL("./public/shots/", import.meta.url));
+const args = process.argv.slice(2);
+const LANG = args.includes("--lang") ? args[args.indexOf("--lang") + 1] : "en";
+const BASE = args.find((a) => a.startsWith("http")) ?? "http://localhost:5181";
+const OUT = fileURLToPath(new URL(LANG === "en" ? "./public/shots/" : `./public/shots-${LANG}/`, import.meta.url));
 await mkdir(OUT, { recursive: true });
 
 const browser = await chromium.launch();
@@ -29,15 +32,19 @@ await ctx.addInitScript((shift) => {
 
 const phone = await ctx.newPage();
 await phone.setViewportSize({ width: 393, height: 852 });
-await phone.goto(`${BASE}/#/capture-phone`);
+await phone.goto(`${BASE}/?lang=${LANG}#/capture-phone`);
 await phone.waitForFunction(() => !!window.__demo);
 const ipad = await ctx.newPage();
+const missing = new Set();
 for (const p of [phone, ipad]) {
   p.on("pageerror", (e) => console.log("page error:", e.message));
-  p.on("console", (m) => m.type() === "error" && console.log("console error:", m.text().slice(0, 300)));
+  p.on("console", (m) => {
+    if (m.type() === "error") console.log("console error:", m.text().slice(0, 300));
+    if (m.text().startsWith("[i18n] missing")) missing.add(m.text());
+  });
 }
 await ipad.setViewportSize({ width: 1180, height: 820 });
-await ipad.goto(`${BASE}/#/capture-ipad`);
+await ipad.goto(`${BASE}/?lang=${LANG}#/capture-ipad`);
 await ipad.waitForFunction(() => !!window.__demo);
 await phone.evaluate(() => document.fonts.ready);
 await ipad.evaluate(() => document.fonts.ready);
@@ -47,13 +54,13 @@ const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 // Put the shared visit into a state. Runs on the page given (state syncs to the other tab).
 async function state(page, stage, extra = {}, scenario = "clear") {
   await page.evaluate(
-    ([stage, extra, scenario]) => {
+    ([stage, extra, scenario, lang]) => {
       const d = window.__demo;
-      d.setState({ scenario, speed: 1, textScale: 1 });
+      d.setState({ scenario, speed: 1, textScale: 1, lang });
       d.getState().jump(stage);
       d.setState(extra);
     },
-    [stage, extra, scenario],
+    [stage, extra, scenario, LANG],
   );
 }
 
@@ -63,8 +70,19 @@ async function shot(page, name, settle = 900) {
   console.log("shot", name);
 }
 
+/** The app's own text for an English phrase, in the language being captured. */
+const L = (text, vars) => phone.evaluate(([t, v]) => window.__tr(t, v), [text, vars]);
+
 async function clickText(page, text, exact = true) {
-  await page.getByText(text, { exact }).first().click();
+  await page.getByText(await L(text), { exact }).first().click();
+}
+
+/** Where an element sits on the iPad screen, for highlight boxes in the video. */
+async function rect(page, selector) {
+  return page.evaluate((s) => {
+    const r = document.querySelector(s)?.getBoundingClientRect();
+    return r ? { x: Math.round(r.x), y: Math.round(r.y), w: Math.round(r.width), h: Math.round(r.height) } : null;
+  }, selector);
 }
 
 async function scrollMain(page, y) {
@@ -75,7 +93,8 @@ async function scrollMain(page, y) {
   }, y);
 }
 
-async function scrollToText(page, text, top = 24) {
+async function scrollToText(page, english, top = 24) {
+  const text = await L(english);
   await page.evaluate(
     ([text, top]) => {
       const el = [...document.querySelectorAll("body *")].find((e) => e.childElementCount === 0 && e.textContent.trim() === text);
@@ -89,7 +108,7 @@ async function scrollToText(page, text, top = 24) {
   );
 }
 
-const meta = {};
+const meta = { rects: {} };
 
 // ---------- Phone: at home ----------
 await state(phone, "start");
@@ -126,10 +145,12 @@ await shot(phone, "p-checked-in");
 await shot(ipad, "i-arrived", 300);
 await state(ipad, "checkin", { phase: "record-review", location: "lakeview", simulator: "sim1" });
 await shot(ipad, "i-record-review");
+meta.rects.attention = await rect(ipad, '[data-capture="attention"]');
 
 // ---------- iPad: the specialist assigns drives ----------
 await state(ipad, "assign");
 await shot(ipad, "i-assign", 1100);
+for (const id of ["reaction", "left", "night"]) meta.rects[`assign-${id}`] = await rect(ipad, `[data-capture="assign-${id}"]`);
 
 // ---------- Drive ----------
 // First pre-drive screen on the phone: which drives Dana chose, and why.
@@ -145,14 +166,14 @@ await shot(ipad, "i-drive-prep");
 await state(ipad, "drive", { phase: "driving" });
 // Nearly frozen at 43 s: the 3D view takes a few seconds to load, and the drive must still be running.
 await ipad.evaluate((ago) => window.__demo.setState({ speed: 0.01, simStart: Date.now() - ago / 0.01 }), 43000);
-await ipad.waitForSelector('canvas[aria-label="Simulator view"]', { timeout: 8000 }).catch(async () => {
+await ipad.waitForSelector('canvas[data-capture="sim"]', { timeout: 8000 }).catch(async () => {
   console.log("state now", await ipad.evaluate(() => window.__demo.getState().phase));
 });
 await wait(600);
 // The simulator view loads on demand; wait until it is laid out before measuring it.
-await ipad.waitForFunction(() => document.querySelector('canvas[aria-label="Simulator view"]')?.getBoundingClientRect().width > 0, null, { timeout: 15000 });
+await ipad.waitForFunction(() => document.querySelector('canvas[data-capture="sim"]')?.getBoundingClientRect().width > 0, null, { timeout: 15000 });
 meta.liveCanvas = await ipad.evaluate(() => {
-  const r = document.querySelector('canvas[aria-label="Simulator view"]').getBoundingClientRect();
+  const r = document.querySelector('canvas[data-capture="sim"]').getBoundingClientRect();
   return { x: r.x, y: r.y, w: r.width, h: r.height };
 });
 meta.liveDriveT = 43;
@@ -164,16 +185,17 @@ await shot(ipad, "i-drive-done");
 await state(ipad, "drive", { phase: "uploading", postFeel: "Comfortable", selfRating: 4, speed: 0.5 });
 await shot(ipad, "i-upload-1", 1100);
 // All four saved: wait for the last row's tick, then its colour transition.
-await ipad.waitForFunction(() => {
-  const label = [...document.querySelectorAll("div")].find((e) => e.childElementCount === 0 && e.textContent === "Simulator session");
+const sessionLabel = await L("Simulator session");
+await ipad.waitForFunction((text) => {
+  const label = [...document.querySelectorAll("div")].find((e) => e.childElementCount === 0 && e.textContent === text);
   return !!label?.closest(".flex")?.querySelector("span.bg-hk svg");
-});
+}, sessionLabel);
 await shot(ipad, "i-upload-2", 400);
 
 // ---------- Review and sign ----------
 async function sign(page) {
   await page.evaluate(() => {
-    const c = document.querySelector('canvas[aria-label="Signature"]');
+    const c = document.querySelector('canvas[data-capture="signature"]');
     const r = c.getBoundingClientRect();
     const ev = (type, x, y) => c.dispatchEvent(new PointerEvent(type, { bubbles: true, clientX: r.left + x * r.width, clientY: r.top + y * r.height, pointerId: 7 }));
     ev("pointerdown", 0.14, 0.62);
@@ -186,21 +208,24 @@ async function sign(page) {
 }
 await state(ipad, "review", {}, "clear");
 await shot(ipad, "i-review-blank", 2600);
+meta.rects.why = await rect(ipad, '[data-capture="why"]');
+meta.rects.decision = await rect(ipad, '[data-capture="decision"]');
 // One drive opened to its measurement, rule and result.
-const nightRow = ipad.locator("button[aria-expanded]", { hasText: "Night drive" });
+const nightRow = ipad.locator('[data-capture="row-night"] button[aria-expanded]');
 await nightRow.click();
 await shot(ipad, "i-review-row", 800);
+meta.rects.row = await rect(ipad, '[data-capture="row-night"]');
 await nightRow.click();
 await wait(500);
 await scrollToText(ipad, "Why this suggestion", 40);
 await shot(ipad, "i-review-why", 600);
 await scrollMain(ipad, 0);
 await wait(300);
-await ipad.locator('button[role="radio"]', { hasText: "Clear" }).click();
+await ipad.locator('button[data-outcome="clear"]').click();
 await shot(ipad, "i-review-chosen", 700);
 await sign(ipad);
 await shot(ipad, "i-review-signed", 500);
-await clickText(ipad, "Sign and share with Margaret");
+await ipad.locator('[data-capture="sign"]').click();
 await shot(ipad, "i-released", 1000);
 await phone.evaluate(() => window.__demo.setState({ tab: "home" }));
 await shot(phone, "p-result-clear", 2600);
@@ -214,12 +239,13 @@ await shot(phone, "p-result-clear-steps", 600);
 // Time to stop path.
 await state(ipad, "review", {}, "stop");
 await wait(900);
-await ipad.locator('button[role="radio"]', { hasText: "Time to stop" }).click();
+await ipad.locator('button[data-outcome="stop"]').click();
 await wait(500);
-await ipad.locator('button[role="checkbox"]', { hasText: "in person" }).click();
+await ipad.locator('[data-capture="discussed"]').click();
 await sign(ipad);
 await shot(ipad, "i-review-stop-signed", 600);
-await clickText(ipad, "Sign and share with Margaret");
+meta.rects.discussed = await rect(ipad, '[data-capture="discussed"]');
+await ipad.locator('[data-capture="sign"]').click();
 await wait(800);
 await phone.evaluate(() => window.__demo.setState({ tab: "home" }));
 await shot(phone, "p-result-stop", 1600);
@@ -229,7 +255,7 @@ await phone.evaluate(() => window.__demo.setState({ ride: { dest: "", option: "f
 await wait(800);
 await clickText(phone, "Sarah's house");
 await shot(phone, "p-ride-choose", 600);
-await clickText(phone, "Text Sarah");
+await phone.getByText(await L("Text {name}", { name: await L("Sarah") }), { exact: true }).first().click();
 await shot(phone, "p-ride-asked", 900);
 await shot(phone, "p-ride-yes", 3200);
 await phone.evaluate(() => window.__demo.setState({ ride: null, tab: "record" }));
@@ -238,5 +264,6 @@ await phone.evaluate(() => window.__demo.setState({ tab: "family" }));
 await shot(phone, "p-family", 1000);
 
 await writeFile(`${OUT}meta.json`, JSON.stringify(meta, null, 1));
+if (missing.size) console.log([...missing].join("\n"));
 await browser.close();
 console.log("done");

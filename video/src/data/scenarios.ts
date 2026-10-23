@@ -1,3 +1,4 @@
+import { list, tr } from "../i18n";
 import type { DriveId } from "./drives";
 import type { DriveRaw, Outcome, ScoreResult } from "../lib/score";
 
@@ -105,21 +106,19 @@ const closing: Record<Outcome, string> = {
   stop: "That tells me driving isn't safe for you now. We went over this together today. A memory clinic will look into the cause. If they find something that can be treated, I'll test you again.",
 };
 
-const joinList = (xs: string[]) => (xs.length < 2 ? xs.join("") : `${xs.slice(0, -1).join(", ")} and ${xs[xs.length - 1]}`);
-
-/** The specialist's draft note to the patient, built only from the drives that were scored. */
+/** The specialist's draft note to the patient, built only from the drives that were scored, in the demo's language. */
 export function draftNote(outcome: Outcome, result: ScoreResult) {
   const scored = result.drives.filter((d) => d.done);
-  const good = scored.filter((d) => !d.hardStop && d.points >= 8).map((d) => strengths[d.id]);
+  const good = scored.filter((d) => !d.hardStop && d.points >= 8).map((d) => tr(strengths[d.id]));
   const weak = scored
     .filter((d) => d.hardStop || d.points < 7)
     .sort((a, b) => Number(!!b.hardStop) - Number(!!a.hardStop) || a.points - b.points)
     .slice(0, 3)
     .map((d) => d.patient);
   const parts: string[] = [];
-  if (good.length && outcome !== "stop") parts.push(`Your ${joinList(good)} went well.`);
-  parts.push(...weak, closing[outcome]);
-  return parts.join(" ");
+  if (good.length && outcome !== "stop") parts.push(tr("Your {list} went well.", { list: list(good) }));
+  parts.push(...weak, tr(closing[outcome]));
+  return parts.join(tr(" "));
 }
 
 /** Who takes care of each plan item, in the patient's words, with a fallback if the call never comes. */

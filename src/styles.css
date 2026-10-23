@@ -1,8 +1,8 @@
 @import "tailwindcss";
 
 @theme {
-  --font-sans: "Atkinson Hyperlegible Next Variable", ui-sans-serif, system-ui, sans-serif;
-  --font-display: "Overpass Variable", "Atkinson Hyperlegible Next Variable", ui-sans-serif, sans-serif;
+  --font-sans: "Atkinson Hyperlegible Next Variable", "Noto Sans JP Variable", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Overpass Variable", "Atkinson Hyperlegible Next Variable", "Noto Sans JP Variable", ui-sans-serif, sans-serif;
 
   --color-paper: #ffffff;
   --color-canvas: #f5f6f4;
@@ -31,6 +31,13 @@
   body,
   #root {
     height: 100%;
+  }
+  /* Japanese headings and buttons break between phrases, never inside a word. */
+  html:lang(ja) body {
+    line-break: strict;
+  }
+  html:lang(ja) :is(h1, h2, h3, button) {
+    word-break: auto-phrase;
   }
   body {
     margin: 0;

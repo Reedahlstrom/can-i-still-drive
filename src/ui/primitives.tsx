@@ -1,6 +1,7 @@
 import { Check } from "lucide-react";
 import { motion } from "motion/react";
 import type { ButtonHTMLAttributes, ReactNode } from "react";
+import { useT } from "../i18n/useT";
 
 type BtnProps = ButtonHTMLAttributes<HTMLButtonElement> & {
   variant?: "primary" | "secondary" | "quiet" | "signal" | "hk" | "light";
@@ -46,6 +47,7 @@ export function ChoiceList({
   multi?: boolean;
   onChange: (v: string | string[]) => void;
 }) {
+  const t = useT();
   const selected = (o: string) => (multi ? Array.isArray(value) && value.includes(o) : value === o);
   const toggle = (o: string) => {
     if (!multi) return onChange(o);
@@ -68,7 +70,7 @@ export function ChoiceList({
               on ? "border-asphalt bg-paper" : "border-transparent bg-paper hover:border-line-strong"
             }`}
           >
-            <span className="py-3 leading-snug">{o}</span>
+            <span className="py-3 leading-snug">{t(o)}</span>
             <span
               className={`flex size-7 shrink-0 items-center justify-center transition-colors ${multi ? "rounded-lg" : "rounded-full"} ${
                 on ? "bg-asphalt text-white" : "border-2 border-line-strong"

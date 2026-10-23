@@ -1,6 +1,7 @@
 import { getLength } from "@remotion/paths";
 import { useLayoutEffect, useRef, type CSSProperties, type ReactNode } from "react";
 import { AbsoluteFill, Easing, Img, interpolate, spring, staticFile, useCurrentFrame, useVideoConfig } from "remotion";
+import { SHOTS } from "./lang";
 import { render as renderSim } from "./sim/SimCanvas";
 import { presets } from "./data/scenarios";
 import { sortDrives, type DriveId } from "./data/drives";
@@ -117,7 +118,7 @@ export function Screens({ shots, width, height }: { shots: Shot[]; width: number
         const m = s.motion ?? "push";
         const tx = m === "push" ? (1 - p) * 34 : 0;
         const ty = m === "scroll" ? (1 - p) * 60 : m === "sheet" ? (1 - p) * 40 : 0;
-        return <Img key={s.src + i} src={staticFile(`shots/${s.src}.png`)} style={{ position: "absolute", left: 0, top: 0, width, height, opacity: p, transform: `translate(${tx}px, ${ty}px)` }} />;
+        return <Img key={s.src + i} src={staticFile(`${SHOTS}/${s.src}.png`)} style={{ position: "absolute", left: 0, top: 0, width, height, opacity: p, transform: `translate(${tx}px, ${ty}px)` }} />;
       })}
     </div>
   );

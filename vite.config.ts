@@ -16,6 +16,8 @@ export default defineConfig({
       includeAssets: ["favicon.svg", "healthkey-wordmark-ink.png", "healthkey-wordmark-white.png"],
       workbox: {
         globPatterns: ["**/*.{js,css,html,svg,png,woff2}"],
+        // Japanese font files load by character range on demand; precaching all of them would be megabytes.
+        globIgnores: ["**/noto-sans-jp*"],
         maximumFileSizeToCacheInBytes: 5 * 1024 * 1024,
       },
       manifest: {

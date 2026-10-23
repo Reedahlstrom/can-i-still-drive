@@ -4,6 +4,7 @@ import { useEffect, useState, type ComponentType } from "react";
 import { AbsoluteFill, Audio, continueRender, delayRender, interpolate, staticFile } from "remotion";
 import { Assign, Checkin, Clear, Close, Drive, Home, Open, Outcomes, Problem, Record, Review, Solution, Stop, Trust } from "./scenes";
 import { FPS } from "./theme";
+import { JA_TEXT, LANG } from "./lang";
 import { LEAD, ORDER, TOTAL, TRANS, sceneFrames, sceneStarts, voSeconds, type SceneId } from "./timing";
 
 const scenes: Record<SceneId, ComponentType> = {
@@ -33,6 +34,8 @@ function useFonts() {
       document.fonts.load('700 30px "Overpass Variable"'),
       document.fonts.load('400 30px "Atkinson Hyperlegible Next Variable"'),
       document.fonts.load('700 30px "Atkinson Hyperlegible Next Variable"'),
+      // Japanese loads by character range: ask for every character the video can show.
+      ...(JA_TEXT ? ["800 80px", "700 30px", "400 30px"].map((w) => document.fonts.load(`${w} "Noto Sans JP Variable"`, JA_TEXT)) : []),
     ]).then(() => continueRender(handle));
   }, [handle]);
 }
@@ -40,7 +43,8 @@ function useFonts() {
 export function Demo() {
   useFonts();
   return (
-    <AbsoluteFill style={{ background: "#14191E" }}>
+    // Japanese breaks lines between phrases rather than mid-word.
+    <AbsoluteFill lang={LANG} style={{ background: "#14191E", ...(LANG === "ja" && { wordBreak: "auto-phrase", lineBreak: "strict" }) }}>
       <TransitionSeries>
         {ORDER.flatMap((id, i) => {
           const S = scenes[id];

@@ -22,6 +22,10 @@ Open http://localhost:5173. On a laptop you get the presenter stage: the patient
 
 Tabs opened in the same browser stay on the same visit, so the phone, iPad and simulator views can run on separate windows or displays.
 
+## Language
+
+The demo runs in English or Japanese. Switch with the language toggle on the stage, or open any URL with `?lang=ja` (for example `/?lang=ja#/stage`). In Japanese, distances and speeds are in km and km/h, heights in cm, visual acuity in decimal, and times in 24-hour form. UI text goes through `tr()` / `useT()` in `src/i18n`; the Japanese strings are in `src/i18n/ja.ts`, keyed by the English text.
+
 ## Demo controls
 
 Press the sliders button in the bottom-right corner of the stage (or the backtick key) to:
@@ -69,6 +73,8 @@ All people, places and records in the demo are fictional.
 ```bash
 cd video && node capture.mjs && npm run render
 ```
+
+For the Japanese video, capture with `node capture.mjs --lang ja` and render with `--props='{"lang":"ja"}'`.
 
 The presenter's click path is in `DEMO.md`.
 

@@ -3,6 +3,8 @@ import { motion } from "motion/react";
 import { useState } from "react";
 import { DRIVES, recommendDrives, sortDrives, type DriveId } from "../data/drives";
 import { patient, questions, record, referringDoctor, schedule, sources, visit } from "../data/demo";
+import { tr } from "../i18n";
+import { useT } from "../i18n/useT";
 import { longDate, today } from "../lib/dates";
 import { useDemo } from "../state/store";
 import { Avatar, HealthKeyLogo } from "../ui/Brand";
@@ -12,15 +14,16 @@ import { Card, Pane } from "./Shell";
 export function Schedule() {
   const phase = useDemo((s) => s.phase);
   const go = useDemo((s) => s.go);
+  const t = useT();
   const arrived = phase === "checked-in";
   const statusFor = (status: string) => {
-    if (status !== "current") return status;
-    if (arrived) return "Checked in";
-    if (phase === "ready") return "Pre-visit done";
-    return "Invited";
+    if (status !== "current") return t(status);
+    if (arrived) return t("Checked in");
+    if (phase === "ready") return t("Pre-visit done");
+    return t("Invited");
   };
   return (
-    <Pane title="Today" sub={longDate(today())}>
+    <Pane title={t("Today")} sub={longDate(today())}>
       {arrived && (
         <motion.div
           initial={{ opacity: 0, y: -8 }}
@@ -32,13 +35,11 @@ export function Schedule() {
             <span className="relative size-3 rounded-full bg-signal" />
           </span>
           <div className="flex-1">
-            <div className="text-[20px] font-semibold">
-              {patient.first} {patient.last} checked in
-            </div>
-            <div className="text-[16px] text-white/65">Simulator 1, Room 204. Health record and answers are ready.</div>
+            <div className="text-[20px] font-semibold">{t("{name} checked in", { name: t(`${patient.first} ${patient.last}`) })}</div>
+            <div className="text-[16px] text-white/65">{t("Simulator 1, Room 204. Health record and answers are ready.")}</div>
           </div>
           <Button variant="signal" size="md" onClick={() => go("record-review")}>
-            Open
+            {t("Open")}
           </Button>
         </motion.div>
       )}
@@ -48,11 +49,11 @@ export function Schedule() {
             const current = r.status === "current";
             return (
               <div key={r.name} className={`flex items-center gap-5 px-6 py-4 ${current ? "" : "opacity-60"}`}>
-                <span className="w-24 font-display text-[17px] font-bold tnum">{r.time}</span>
+                <span className="w-24 font-display text-[17px] font-bold tnum">{t(r.time)}</span>
                 <Avatar initials={r.name.split(" ").map((x) => x[0]).join("")} size={40} tone={current ? "asphalt" : "mist"} />
                 <div className="flex-1">
-                  <div className="text-[18px] font-semibold">{r.name}</div>
-                  <div className="text-[15px] text-graphite">{r.age}</div>
+                  <div className="text-[18px] font-semibold">{t(r.name)}</div>
+                  <div className="text-[15px] text-graphite">{t("age::{age}", { age: r.age })}</div>
                 </div>
                 <span className={`rounded-full px-3 py-1 text-[14px] font-semibold ${current && arrived ? "bg-signal text-asphalt" : "bg-mist text-graphite"}`}>{statusFor(r.status)}</span>
               </div>
@@ -96,11 +97,15 @@ export function useAttention() {
   const answers = useDemo((s) => s.answers);
   const shared = useSharedRecord();
   const items: { title: string; detail: string; source: string }[] = [];
-  for (const m of [...shared.medicines, ...shared.conditions]) if (m.flag) items.push({ title: m.name, detail: m.flag, source: `${m.source}, ${m.date}` });
-  items.push({ title: "Referral", detail: "Daughter raised a driving concern at her annual wellness visit.", source: `${referringDoctor.name}, Oct 6` });
-  if (answers.incidents && answers.incidents !== "No") items.push({ title: `Reports ${String(answers.incidents).toLowerCase()} in the past year`, detail: "From her intake answers", source: "Patient reported, today" });
+  useDemo((s) => s.lang);
+  const sep = tr(", ");
+  for (const m of [...shared.medicines, ...shared.conditions]) if (m.flag) items.push({ title: tr(m.name), detail: tr(m.flag), source: `${tr(m.source)}${sep}${tr(m.date)}` });
+  items.push({ title: tr("Referral"), detail: tr("Daughter raised a driving concern at her annual wellness visit."), source: `${tr(referringDoctor.name)}${sep}${tr("Oct 6")}` });
+  if (answers.incidents && answers.incidents !== "No")
+    items.push({ title: tr(answers.incidents === "A crash" ? "Reports a crash in the past year" : "Reports a close call in the past year"), detail: tr("From her intake answers"), source: tr("Patient reported, today") });
   const avoid = answers.avoid as string[] | undefined;
-  if (avoid?.length && !avoid.includes("None of these")) items.push({ title: `Avoids ${avoid.map((a) => a.toLowerCase()).join(", ")}`, detail: "From her intake answers", source: "Patient reported, today" });
+  if (avoid?.length && !avoid.includes("None of these"))
+    items.push({ title: tr("Avoids {list}", { list: avoid.map((a) => tr(a).toLowerCase()).join(sep) }), detail: tr("From her intake answers"), source: tr("Patient reported, today") });
   return items;
 }
 
@@ -116,20 +121,17 @@ function useRecommended() {
 
 function AssignDrives({ picked, toggle, locked }: { picked: DriveId[]; toggle: (id: DriveId) => void; locked: boolean }) {
   const recs = useRecommended();
+  const t = useT();
   const recById = Object.fromEntries(recs.map((r) => [r.id, r]));
   const minutes = DRIVES.filter((d) => picked.includes(d.id)).reduce((a, d) => a + d.minutes, 0);
   const list = locked ? DRIVES.filter((d) => picked.includes(d.id)) : DRIVES;
 
   return (
     <Card
-      title={locked ? "Assigned drives" : "Assign drives"}
-      aside={
-        <span className="text-[14px] text-graphite">
-          {picked.length} {picked.length === 1 ? "drive" : "drives"}, about {minutes} min
-        </span>
-      }
+      title={locked ? t("Assigned drives") : t("Assign drives")}
+      aside={<span className="text-[14px] text-graphite">{picked.length === 1 ? t("1 drive, about {m} min", { m: minutes }) : t("{n} drives, about {m} min", { n: picked.length, m: minutes })}</span>}
     >
-      {!locked && picked.length < 3 && <p className="px-5 pb-2 text-[13px] text-graphite">DriverScore needs at least 3 drives to suggest an outcome.</p>}
+      {!locked && picked.length < 3 && <p className="px-5 pb-2 text-[13px] text-graphite">{t("DriverScore needs at least 3 drives to suggest an outcome.")}</p>}
       <div className="divide-y divide-line pb-1">
         {list.map((d) => {
           const on = picked.includes(d.id);
@@ -137,6 +139,7 @@ function AssignDrives({ picked, toggle, locked }: { picked: DriveId[]; toggle: (
           return (
             <button
               key={d.id}
+              data-capture={`assign-${d.id}`}
               role="checkbox"
               aria-checked={on}
               disabled={locked}
@@ -148,10 +151,10 @@ function AssignDrives({ picked, toggle, locked }: { picked: DriveId[]; toggle: (
               )}
               <span className="min-w-0 flex-1">
                 <span className="flex items-center gap-2">
-                  <span className="text-[16px] font-semibold">{d.name}</span>
-                  {rec && !locked && <span className="rounded-md bg-signal-soft px-1.5 py-0.5 text-[11px] font-bold text-signal-ink">Recommended</span>}
+                  <span className="text-[16px] font-semibold">{t(d.name)}</span>
+                  {rec && !locked && <span className="rounded-md bg-signal-soft px-1.5 py-0.5 text-[11px] font-bold text-signal-ink">{t("Recommended")}</span>}
                 </span>
-                <span className="block text-[13px] text-graphite">{d.measures}</span>
+                <span className="block text-[13px] text-graphite">{t(d.measures)}</span>
                 {rec?.reasons.map((r) => (
                   <span key={r} className="mt-0.5 flex items-start gap-1.5 text-[13px] leading-snug">
                     <span className="mt-[5px] h-2.5 w-0.5 shrink-0 rounded-full bg-signal" />
@@ -159,7 +162,7 @@ function AssignDrives({ picked, toggle, locked }: { picked: DriveId[]; toggle: (
                   </span>
                 ))}
               </span>
-              <span className="shrink-0 text-[13px] text-graphite tnum">{d.minutes} min</span>
+              <span className="shrink-0 text-[13px] text-graphite tnum">{t("{m} min", { m: d.minutes })}</span>
             </button>
           );
         })}
@@ -177,6 +180,7 @@ export function RecordReview() {
   const attention = useAttention();
   const current = useDemo((s) => s.assigned);
   const recs = useRecommended();
+  const t = useT();
   const [picked, setPicked] = useState<DriveId[]>(() => (current.length ? current : recs.map((r) => r.id)));
   const toggle = (id: DriveId) => setPicked((p) => (p.includes(id) ? p.filter((x) => x !== id) : [...p, id]));
   const assign = () => {
@@ -187,21 +191,21 @@ export function RecordReview() {
   };
   return (
     <Pane
-      title={`${patient.first} ${patient.last}`}
-      sub={`${patient.age}, born ${patient.dob}. Referred by ${referringDoctor.name}: ${visit.reason.toLowerCase()}.`}
+      title={t(`${patient.first} ${patient.last}`)}
+      sub={t("{age}, born {dob}. Referred by {doctor}: {reason}.", { age: patient.age, dob: t(patient.dob), doctor: t(referringDoctor.name), reason: t(visit.reason).toLowerCase() })}
       actions={
         reviewing ? (
-          <Button size="md" onClick={() => go("review")}>Back to review</Button>
+          <Button size="md" onClick={() => go("review")}>{t("Back to review")}</Button>
         ) : (
           <Button size="md" disabled={!picked.length} onClick={assign}>
-            Assign {picked.length} {picked.length === 1 ? "drive" : "drives"}
+            {picked.length === 1 ? t("Assign 1 drive") : t("Assign {n} drives", { n: picked.length })}
           </Button>
         )
       }
     >
       <div className="grid grid-cols-[1fr_1.12fr] gap-5">
         <div className="flex flex-col gap-5">
-          <Card title="Needs attention">
+          <Card title={t("Needs attention")} capture="attention">
             <div className="divide-y divide-line pb-1">
               {attention.map((a) => (
                 <div key={a.title} className="flex gap-4 px-5 py-3">
@@ -215,45 +219,45 @@ export function RecordReview() {
               ))}
             </div>
           </Card>
-          <Card title="Her answers">
+          <Card title={t("Her answers")}>
             <div className="divide-y divide-line pb-1">
               {questions.map((q) => {
                 const a = answers[q.id];
-                return <Line key={q.id} title={Array.isArray(a) ? a.join(", ") : a ?? "Not answered"} detail={q.prompt} />;
+                return <Line key={q.id} title={Array.isArray(a) ? a.map((x) => t(x)).join(t(", ")) : t(a ?? "Not answered")} detail={t(q.prompt)} />;
               })}
             </div>
           </Card>
           {hk ? (
             <>
-              <Card title="Medicines">
+              <Card title={t("Medicines")}>
                 <div className="divide-y divide-line pb-1">
                   {shared.medicines.map((m) => (
-                    <Line key={m.name} title={m.name} detail={m.detail} source={`${m.source}, ${m.date}`} />
+                    <Line key={m.name} title={t(m.name)} detail={t(m.detail)} source={`${t(m.source)}${t(", ")}${t(m.date)}`} />
                   ))}
                 </div>
               </Card>
-              <Card title="Conditions">
+              <Card title={t("Conditions")}>
                 <div className="divide-y divide-line pb-1">
                   {shared.conditions.map((m) => (
-                    <Line key={m.name} title={m.name} detail={m.detail} source={`${m.source}, ${m.date}`} />
+                    <Line key={m.name} title={t(m.name)} detail={t(m.detail)} source={`${t(m.source)}${t(", ")}${t(m.date)}`} />
                   ))}
                 </div>
               </Card>
-              <Card title="Eye exams">
+              <Card title={t("Eye exams")}>
                 <div className="divide-y divide-line pb-1">
                   {shared.eyes.map((m) => (
-                    <Line key={m.date} title={m.date} detail={m.detail} source={m.source} />
+                    <Line key={m.date} title={t(m.date)} detail={t(m.detail)} source={t(m.source)} />
                   ))}
                 </div>
               </Card>
               <div className="flex flex-wrap items-center gap-x-2 gap-y-1 px-1 text-[14px] text-graphite">
                 <HealthKeyLogo height={18} />
-                <span>{sources.map((s) => s.name).join(", ")}</span>
+                <span>{sources.map((s) => t(s.name)).join(t(", "))}</span>
               </div>
             </>
           ) : (
-            <Card title="Health record">
-              <p className="px-5 pt-1 pb-4 text-[16px]">Not connected. Ask about medicines and recent eye exams.</p>
+            <Card title={t("Health record")}>
+              <p className="px-5 pt-1 pb-4 text-[16px]">{t("Not connected. Ask about medicines and recent eye exams.")}</p>
             </Card>
           )}
         </div>

@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { driveById, sortDrives, type DriveId } from "../data/drives";
+import { tr } from "../i18n";
 import type { DriveRaw, DriveScore } from "../lib/score";
 
 // Each drive plays an 8-second stretch (at 1x) in its own simulator scene; an assigned set of
@@ -64,9 +65,9 @@ export function driveEvents(assigned: DriveId[], scores: DriveScore[], raw: Driv
   ids.forEach((id, i) => {
     const start = i * SEG;
     const hs = hardStopAt(id, raw);
-    if (hs !== null) ev.push({ at: start + hs, text: hardStopText[id] ?? "Hard stop", alert: true });
+    if (hs !== null) ev.push({ at: start + hs, text: tr(hardStopText[id] ?? "Hard stop"), alert: true });
     const s = scores.find((x) => x.id === id);
-    if (s && s.done) ev.push({ at: start + SCORE_AT, text: s.name, points: `${s.points} of 10` });
+    if (s && s.done) ev.push({ at: start + SCORE_AT, text: s.name, points: tr("{p} of 10", { p: s.points }) });
   });
   return ev.sort((a, b) => a.at - b.at);
 }

@@ -2,8 +2,9 @@
 
     python3 voice.py --model ggml-base.en.bin take1.mp3 [take2.mp3 ...] [--use outcomes=2]
     python3 voice.py --model ggml-base.en.bin --only assign assign-take.mp3
+    python3 voice.py --lang ja take.mp3
 
-Each take is the whole script read in order, one paragraph per scene (script.json). By default every
+Each take is the whole script read in order, one paragraph per scene (script.json, or script.ja.json). By default every
 scene comes from take 1; --use picks another take for a scene (1-based). With --only, the take holds
 just that scene's line and only that scene is replaced. Writes public/vo/<scene>.wav,
 public/vo/durations.json, and public/vo/cues.json (when each word starts, so on-screen moments land on
@@ -16,14 +17,15 @@ import json
 import os
 import re
 import subprocess
+import sys
 import tempfile
 import wave
 
 import numpy as np
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-OUT = os.path.join(HERE, "public", "vo")
 FFDIR = os.path.join(HERE, "node_modules", "@remotion", "compositor-darwin-arm64")
+OUT = os.path.join(HERE, "public", "vo")
 SCRIPT = json.load(open(os.path.join(HERE, "script.json")))
 
 # Every clip is levelled to the same speech loudness (takes generated separately can differ),
@@ -91,13 +93,140 @@ def read_wav(path):
     return x, w.getframerate()
 
 
+# ---------- Japanese: no speech recogniser, so pauses are matched to the text ----------
+
+
+def morae(ch):
+    """Rough speaking length of one character, in morae."""
+    if ch in "、。？！：「」（）・": return 0.0
+    if ch in "ゃゅょャュョぁぃぅぇぉァィゥェォ": return 0.4
+    if "\u3040" <= ch <= "\u30ff": return 1.0
+    if "\u4e00" <= ch <= "\u9fff": return 1.7
+    if ch.isdigit(): return 2.0
+    return 1.0
+
+
+def pauses(env, quiet, lo, hi, min_len):
+    runs, cur = [], None
+    for k in range(int(lo * 100), min(len(env), int(hi * 100))):
+        if env[k] <= quiet:
+            cur = (cur[0], k) if cur else (k, k)
+        elif cur:
+            runs.append(cur)
+            cur = None
+    if cur:
+        runs.append(cur)
+    return [(a / 100, b / 100) for a, b in runs if (b - a) / 100 >= min_len]
+
+
+def japanese(take):
+    tmp = tempfile.mkdtemp()
+    hi = os.path.join(tmp, "take.wav")
+    ffmpeg("-i", take, "-ar", "44100", "-ac", "1", "-c:a", "pcm_s16le", hi)
+    x, sr = read_wav(hi)
+    hop = sr // 100
+    env = np.sqrt(np.convolve(x**2, np.ones(hop) / hop, mode="same"))[::hop]
+    quiet = env.max() * 0.025
+    total = len(x) / sr
+    start = 0.0
+    while env[int(start * 100)] <= quiet:
+        start += 0.01
+    end = total - 0.01
+    while env[int(end * 100)] <= quiet:
+        end -= 0.01
+    weights = [sum(morae(c) for c in sc["text"]) for sc in SCRIPT]
+    cands = pauses(env, quiet, start, end, 0.2)
+    n = len(SCRIPT)
+    # Pick n-1 pauses so every paragraph runs at about the same pace.
+    pts = [start] + [(a + b) / 2 for a, b in cands] + [end]
+    lens = [0] + [b - a for a, b in cands] + [0]
+    rate = (end - start) / sum(weights)
+    INF = 1e18
+    best = [[INF] * len(pts) for _ in range(n + 1)]
+    back = [[-1] * len(pts) for _ in range(n + 1)]
+    best[0][0] = 0
+    for k in range(1, n + 1):
+        for j in range(1, len(pts)):
+            if k == n and j != len(pts) - 1:
+                continue
+            for i in range(j):
+                if best[k - 1][i] == INF:
+                    continue
+                d = pts[j] - pts[i]
+                cost = best[k - 1][i] + (np.log(d / (rate * weights[k - 1]))) ** 2 * 10 - lens[j] * 2
+                if cost < best[k][j]:
+                    best[k][j] = cost
+                    back[k][j] = i
+    if best[n][len(pts) - 1] == INF:
+        sys.exit(f"Found only {len(cands)} pauses for {n} paragraphs: is this the whole script in one take?")
+    cuts, j = [], len(pts) - 1
+    for k in range(n, 0, -1):
+        cuts.append(j)
+        j = back[k][j]
+    cuts = [0] + cuts[::-1]
+
+    durs, cues = {}, {}
+    for k, sc in enumerate(SCRIPT):
+        a_idx, b_idx = cuts[k], cuts[k + 1]
+        seg0 = start if a_idx == 0 else cands[a_idx - 1][1]
+        seg1 = end if b_idx == len(pts) - 1 else cands[b_idx - 1][0]
+        clip_start, clip_end = max(0.0, seg0 - 0.1), seg1 + 0.22
+        clip = x[int(clip_start * sr) : int(clip_end * sr)].copy()
+        speech = clip[np.abs(clip) > 0.01]
+        clip *= 10 ** ((TARGET_DB - 20 * np.log10(np.sqrt(np.mean(speech**2)))) / 20)
+        over = np.abs(clip) > KNEE
+        clip[over] = np.sign(clip[over]) * (KNEE + (CEILING - KNEE) * np.tanh((np.abs(clip[over]) - KNEE) / (CEILING - KNEE)))
+        fd = int(0.012 * sr)
+        clip[:fd] *= np.linspace(0, 1, fd)
+        clip[-fd:] *= np.linspace(1, 0, fd)
+        with wave.open(os.path.join(OUT, f"{sc['id']}.wav"), "w") as w:
+            w.setnchannels(1)
+            w.setsampwidth(2)
+            w.setframerate(sr)
+            w.writeframes((clip * 32767).astype(np.int16).tobytes())
+        durs[sc["id"]] = round(len(clip) / sr, 3)
+        # Anchor each sentence and comma to the pause nearest where the text says it should be.
+        text = sc["text"]
+        cum = np.cumsum([0] + [morae(c) for c in text])
+        inner = pauses(env, quiet, seg0, seg1, 0.12)
+        anchors = [(0, seg0)]
+        for i, c in enumerate(text):
+            if c in "、。？" and i + 1 < len(text):
+                est = seg0 + (seg1 - seg0) * cum[i + 1] / cum[-1]
+                near = [p for p in inner if abs((p[0] + p[1]) / 2 - est) < 0.7 and p[1] > anchors[-1][1]]
+                if near:
+                    p = min(near, key=lambda p: abs((p[0] + p[1]) / 2 - est))
+                    anchors.append((i + 1, p[1]))
+        anchors.append((len(text), seg1))
+        out = []
+        for i in range(len(text)):
+            for (ci, ti), (cj, tj) in zip(anchors, anchors[1:]):
+                if ci <= i <= cj:
+                    span = cum[cj] - cum[ci]
+                    t = ti + (tj - ti) * ((cum[i] - cum[ci]) / span if span else 0)
+                    out.append([i, round(t - clip_start, 3)])
+                    break
+        cues[sc["id"]] = out
+        print(f"{sc['id']:9s} {seg0:6.2f}-{seg1:6.2f}  {durs[sc['id']]:5.2f}s  pace {(seg1 - seg0) / (rate * weights[k]):.2f}  anchors {len(anchors) - 2}")
+    json.dump(durs, open(os.path.join(OUT, "durations.json"), "w"), indent=1)
+    json.dump(cues, open(os.path.join(OUT, "cues.json"), "w"))
+    print(f"voice total {sum(durs.values()):.1f}s")
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("takes", nargs="+")
-    ap.add_argument("--model", required=True, help="whisper.cpp model, e.g. ggml-base.en.bin")
+    ap.add_argument("--model", help="whisper.cpp model, e.g. ggml-base.en.bin (English only)")
     ap.add_argument("--use", action="append", default=[], help="scene=take, e.g. outcomes=2")
     ap.add_argument("--only", help="the takes hold just this scene's line; replace only that scene")
+    ap.add_argument("--lang", default="en")
     a = ap.parse_args()
+    if a.lang == "ja":
+        global OUT, SCRIPT
+        OUT = os.path.join(HERE, "public", "vo-ja")
+        SCRIPT = json.load(open(os.path.join(HERE, "script.ja.json")))
+        os.makedirs(OUT, exist_ok=True)
+        return japanese(a.takes[0])
     if a.only and a.only not in {sc["id"] for sc in SCRIPT}:
         ap.error(f"no scene called {a.only}")
     choice = {sc["id"]: 0 for sc in SCRIPT}

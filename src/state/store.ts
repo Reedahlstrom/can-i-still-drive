@@ -3,6 +3,7 @@ import { persist, createJSONStorage } from "zustand/middleware";
 import { defaultAnswers, patient } from "../data/demo";
 import { recommendDrives, sortDrives, type DriveId } from "../data/drives";
 import { draftNote, outcomeCopy, presets, type ScenarioKey } from "../data/scenarios";
+import { inLang, setLang, tr, type Lang } from "../i18n";
 import { score, type DriveRaw, type Outcome, type ScoreResult } from "../lib/score";
 
 export type Phase = "onboarding" | "ready" | "checked-in" | "record-review" | "pre-drive" | "driving" | "post-drive" | "uploading" | "review" | "released";
@@ -36,6 +37,8 @@ export type Ride = { dest: string; other?: string; option: string; when: "now" |
 export type Account = { name: string; dob: string; phone: string };
 
 type Data = {
+  /** Language of every screen: patient, specialist and simulator. */
+  lang: Lang;
   account: Account;
   scenario: ScenarioKey;
   speed: 1 | 2;
@@ -88,7 +91,15 @@ export const jumpLabels: Record<JumpStage, string> = {
   results: "Results",
 };
 
+/** A ?lang=ja (or ?lang=en) link picks the language. */
+const urlLang = (): Lang | null => {
+  if (typeof location === "undefined") return null;
+  const l = new URLSearchParams(location.search).get("lang");
+  return l === "ja" || l === "en" ? l : null;
+};
+
 const initial: Data = {
+  lang: urlLang() ?? "en",
   account: { name: `${patient.first} ${patient.last}`, dob: patient.dob, phone: patient.phone },
   scenario: "clear",
   speed: 1,
@@ -150,14 +161,14 @@ export function determinationFor(outcome: Outcome, result?: ScoreResult): Determ
     conditions: outcome === "conditions" && result ? [...result.conditions] : [...c.conditions],
     plan: [...c.plan],
     retestMonths: c.retestMonths,
-    note: result ? draftNote(outcome, result) : c.note,
+    note: result ? draftNote(outcome, result) : tr(c.note),
     discussed: false,
     signature: null,
     signedAt: null,
   };
 }
 
-function stageState(stage: JumpStage, keep: Pick<Data, "scenario" | "speed" | "textScale">): Data {
+function stageState(stage: JumpStage, keep: Pick<Data, "scenario" | "speed" | "textScale" | "lang">): Data {
   const base: Data = { ...initial, ...keep };
   if (stage === "start") return base;
   const healthkey: Data = { ...base, patientStep: "hk-intro" };
@@ -184,10 +195,10 @@ export const useDemo = create<Data & Actions>()(
       setLive: (p) => set({ live: { ...get().live, ...p } }),
       go: (phase, extra) => set({ phase, ...extra }),
       startReview: () => set({ phase: "review", determination: { ...blankDetermination } }),
-      reset: () => set({ ...initial, scenario: get().scenario, speed: get().speed, visit: get().visit + 1 }),
+      reset: () => set({ ...initial, scenario: get().scenario, speed: get().speed, lang: get().lang, visit: get().visit + 1 }),
       jump: (stage) => {
         const s = get();
-        set({ ...stageState(stage, { scenario: s.scenario, speed: s.speed, textScale: s.textScale }), visit: s.visit + 1 });
+        set({ ...stageState(stage, { scenario: s.scenario, speed: s.speed, textScale: s.textScale, lang: s.lang }), visit: s.visit + 1 });
       },
     }),
     {
@@ -201,6 +212,24 @@ export const useDemo = create<Data & Actions>()(
     },
   ),
 );
+
+// The language follows the store everywhere, including text built outside components.
+setLang(useDemo.getState().lang);
+useDemo.subscribe((s, prev) => {
+  if (s.lang === prev.lang) return;
+  setLang(s.lang);
+  // Keep ?lang= in the address in step, so reloading keeps the language.
+  if (typeof location !== "undefined" && new URLSearchParams(location.search).has("lang")) {
+    const url = new URL(location.href);
+    url.searchParams.set("lang", s.lang);
+    history.replaceState(history.state, "", url);
+  }
+  // A drafted note nobody has edited follows the language too.
+  const d = s.determination;
+  if (!d?.outcome) return;
+  const result = score(resultsFor(s), s.assigned, s.drivesCompleted ?? undefined, s.hardStopSeen);
+  if (d.note === inLang(prev.lang, () => draftNote(d.outcome!, result))) useDemo.setState({ determination: { ...d, note: draftNote(d.outcome, result) } });
+});
 
 // Keep every open tab (patient, specialist, simulator) on the same visit.
 const channel = typeof BroadcastChannel !== "undefined" ? new BroadcastChannel("driverscore-demo-v3") : null;
@@ -220,6 +249,12 @@ if (channel) {
     useDemo.setState(e.data);
     applyingRemote = false;
   };
+}
+
+// ?lang= in the address picks the language, here and in every tab already open.
+{
+  const fromUrl = urlLang();
+  if (fromUrl && useDemo.getState().lang !== fromUrl) useDemo.setState({ lang: fromUrl });
 }
 
 export const useResults = () => {

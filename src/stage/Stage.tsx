@@ -2,6 +2,9 @@ import { ExternalLink, RotateCcw, SlidersHorizontal, X } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { useEffect, useState, type CSSProperties, type ReactNode } from "react";
 import { scenarioLabels, type ScenarioKey } from "../data/scenarios";
+import type { Lang } from "../i18n";
+import { useT } from "../i18n/useT";
+import { timeOf } from "../lib/dates";
 import { PatientApp } from "../patient/PatientApp";
 import { SpecialistApp } from "../specialist/SpecialistApp";
 import { driveLength, driveSeconds } from "../sim/timeline";
@@ -20,7 +23,8 @@ function useClock() {
     const id = setInterval(() => setNow(new Date()), 15000);
     return () => clearInterval(id);
   }, []);
-  return now.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" }).replace(/\s?[AP]M/, "");
+  useDemo((s) => s.lang);
+  return timeOf(now).replace(/\s?[AP]M/, "").replace(/^(午前|午後)/, "");
 }
 
 function StatusBar({ dark = false, small = false }: { dark?: boolean; small?: boolean }) {
@@ -111,6 +115,7 @@ function Presenter({ onClose }: { onClose: () => void }) {
   const set = useDemo((s) => s.set);
   const jump = useDemo((s) => s.jump);
   const reset = useDemo((s) => s.reset);
+  const t = useT();
   const open = (hash: string) => window.open(`${location.pathname}#/${hash}`, `driverscore-${hash}`);
   const pickScenario = (k: ScenarioKey) => {
     const s = useDemo.getState();
@@ -134,32 +139,32 @@ function Presenter({ onClose }: { onClose: () => void }) {
       className="absolute right-6 bottom-20 z-50 w-[360px] rounded-3xl bg-paper p-5 text-asphalt shadow-[0_30px_60px_-12px_rgba(0,0,0,0.5)]"
     >
       <div className="flex items-center justify-between">
-        <h2 className="font-display text-[20px] font-extrabold">Demo controls</h2>
-        <button onClick={onClose} aria-label="Close" className="flex size-9 items-center justify-center rounded-full hover:bg-mist">
+        <h2 className="font-display text-[20px] font-extrabold">{t("Demo controls")}</h2>
+        <button onClick={onClose} aria-label={t("Close")} className="flex size-9 items-center justify-center rounded-full hover:bg-mist">
           <X size={20} />
         </button>
       </div>
-      <h3 className="mt-4 mb-2 text-[14px] font-semibold text-graphite">Result</h3>
+      <h3 className="mt-4 mb-2 text-[14px] font-semibold text-graphite">{t("Result")}</h3>
       <div className="grid grid-cols-2 gap-1.5">
         {(Object.keys(scenarioLabels) as ScenarioKey[]).map((k) => (
           <button key={k} onClick={() => pickScenario(k)} aria-pressed={scenario === k} className={`h-10 rounded-xl px-3 text-left text-[15px] font-semibold ${scenario === k ? "bg-asphalt text-white" : "bg-mist hover:bg-line"}`}>
-            {scenarioLabels[k]}
+            {t(scenarioLabels[k])}
           </button>
         ))}
       </div>
-      <p className="mt-2 text-[13px] leading-snug text-graphite">Live measures your own brake tap: tap the road or press space at the red light.</p>
-      <h3 className="mt-4 mb-2 text-[14px] font-semibold text-graphite">Jump to</h3>
+      <p className="mt-2 text-[13px] leading-snug text-graphite">{t("Live measures your own brake tap: tap the road or press space at the red light.")}</p>
+      <h3 className="mt-4 mb-2 text-[14px] font-semibold text-graphite">{t("Jump to")}</h3>
       <div className="grid grid-cols-2 gap-1.5">
         {(Object.keys(jumpLabels) as JumpStage[]).map((k) => (
           <button key={k} onClick={() => jump(k)} className="h-10 rounded-xl bg-mist px-3 text-left text-[15px] font-semibold hover:bg-line">
-            {jumpLabels[k]}
+            {t(jumpLabels[k])}
           </button>
         ))}
       </div>
       <div className="mt-4 flex items-center justify-between">
-        <span className="text-[14px] font-semibold text-graphite">Speed</span>
+        <span className="text-[14px] font-semibold text-graphite">{t("Speed")}</span>
         <Segmented
-          label="Speed"
+          label={t("Speed")}
           size="sm"
           value={speed}
           onChange={changeSpeed}
@@ -176,15 +181,42 @@ function Presenter({ onClose }: { onClose: () => void }) {
           ["simulator", "Simulator"],
         ].map(([h, l]) => (
           <button key={h} onClick={() => open(h)} className="flex h-10 items-center justify-center gap-1.5 rounded-xl border-2 border-line text-[14px] font-semibold hover:border-line-strong">
-            {l}
+            {t(l)}
             <ExternalLink size={14} />
           </button>
         ))}
       </div>
       <button onClick={reset} className="mt-4 flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-asphalt text-[15px] font-semibold text-white">
-        <RotateCcw size={16} /> Start over
+        <RotateCcw size={16} /> {t("Start over")}
       </button>
     </motion.div>
+  );
+}
+
+/** English or Japanese on every screen at once. Each language is named in itself. */
+function LangToggle() {
+  const lang = useDemo((s) => s.lang);
+  const set = useDemo((s) => s.set);
+  const t = useT();
+  const options: [Lang, string][] = [
+    ["en", "English"],
+    ["ja", "日本語"],
+  ];
+  return (
+    <div role="radiogroup" aria-label={t("Language")} className="inline-flex rounded-full bg-white/10 p-1">
+      {options.map(([v, label]) => (
+        <button
+          key={v}
+          role="radio"
+          aria-checked={lang === v}
+          lang={v}
+          onClick={() => set({ lang: v })}
+          className={`h-8 rounded-full px-3.5 text-[14px] font-semibold transition-colors ${lang === v ? "bg-white text-asphalt" : "text-white/70 hover:text-white"}`}
+        >
+          {label}
+        </button>
+      ))}
+    </div>
   );
 }
 
@@ -193,6 +225,7 @@ export function Stage() {
   const focus = useFocus();
   const phase = useDemo((s) => s.phase);
   const patientStep = useDemo((s) => s.patientStep);
+  const t = useT();
   const [panel, setPanel] = useState(false);
   const darkStatus = (phase === "onboarding" && patientStep === "welcome") || phase === "driving";
   const dim = (d: "phone" | "ipad") => focus !== "both" && focus !== d;
@@ -211,6 +244,7 @@ export function Stage() {
     <div className="dark-surface relative flex h-full w-full flex-col overflow-hidden bg-asphalt">
       <div className="flex items-center justify-between px-8 pt-6">
         <DriverScoreWordmark size={30} light />
+        <LangToggle />
       </div>
       <div className="flex min-h-0 flex-1 items-center justify-center">
         <div className="flex items-end" style={{ gap: GAP * scale }}>
@@ -242,7 +276,7 @@ export function Stage() {
                   </div>
                 </motion.div>
                 <motion.div animate={{ opacity: dim(d) ? 0.4 : 0.8 }} className="mt-4 text-[15px] font-semibold text-white">
-                  {label}
+                  {t(label)}
                 </motion.div>
               </div>
             );
@@ -251,7 +285,7 @@ export function Stage() {
       </div>
       <button
         onClick={() => setPanel(!panel)}
-        aria-label="Demo controls"
+        aria-label={t("Demo controls")}
         aria-expanded={panel}
         className="absolute right-6 bottom-6 z-50 flex size-12 items-center justify-center rounded-full bg-white/10 text-white transition-colors hover:bg-white/20"
       >

@@ -1,7 +1,7 @@
 import { getLength, getPointAtLength } from "@remotion/paths";
 import type { CSSProperties, ReactNode } from "react";
 import { AbsoluteFill, Audio, Sequence, interpolate, staticFile, useCurrentFrame } from "remotion";
-import meta from "../public/shots/meta.json";
+import { L, LANG, VO, meta } from "./lang";
 import {
   Background,
   Callout,
@@ -39,7 +39,7 @@ function Scene({ id, children, tone = "dark", drift = 0.03 }: { id: SceneId; chi
       <Background tone={tone} />
       <AbsoluteFill style={{ transform: `scale(${z})` }}>{children}</AbsoluteFill>
       <Sequence from={Math.round(LEAD * FPS)} layout="none">
-        <Audio src={staticFile(`vo/${id}.wav`)} />
+        <Audio src={staticFile(`${VO}/${id}.wav`)} />
       </Sequence>
     </AbsoluteFill>
   );
@@ -72,15 +72,21 @@ function Beats({ items, style }: { items: { at: number; node: ReactNode }[]; sty
   );
 }
 
+/** Where an element sits on a captured iPad screen (measured at capture time), or a fallback. */
+const rectOf = (key: string, fallback: { x: number; y: number; w: number; h: number }) => meta.rects?.[key] ?? fallback;
+const centerOf = (r: { x: number; y: number; w: number; h: number }): [number, number] => [r.x + r.w / 2, r.y + r.h / 2];
+
 /** The visit, step by step. The current step fills as its scene plays. */
 const STEPS = ["Before the visit", "At the hospital", "Drives assigned", "The drives", "Review and sign", "Her plan"];
 
-function Steps({ step, id, style }: { step: number; id: SceneId; style?: CSSProperties }) {
+function Steps({ step, id, style, zoom = 1 }: { step: number; id: SceneId; style?: CSSProperties; zoom?: number }) {
   const frame = useCurrentFrame();
   const fill = interpolate(frame, [0, sceneFrames(id)], [0, 1], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
   const s = useSpring(2, { damping: 200, stiffness: 90 });
+  // Out of the way while the camera is in close on a screen.
+  const away = interpolate(zoom, [1, 1.08], [1, 0], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
   return (
-    <div style={{ position: "absolute", left: 124, top: 40, opacity: s, ...style }}>
+    <div style={{ position: "absolute", left: 124, top: 40, opacity: s * away, ...style }}>
       <div style={{ display: "inline-flex", alignItems: "center", gap: 22, background: "rgba(20,25,30,0.82)", borderRadius: 999, padding: "14px 26px", boxShadow: "0 12px 30px -12px rgba(0,0,0,0.5)" }}>
         <div style={{ display: "flex", gap: 8 }}>
           {STEPS.map((_, i) => (
@@ -89,7 +95,7 @@ function Steps({ step, id, style }: { step: number; id: SceneId; style?: CSSProp
             </div>
           ))}
         </div>
-        <div style={{ fontFamily: display, fontWeight: 800, fontSize: 30, color: "#fff" }}>{STEPS[step]}</div>
+        <div style={{ fontFamily: display, fontWeight: 800, fontSize: 30, color: "#fff" }}>{L(STEPS[step])}</div>
       </div>
     </div>
   );
@@ -97,8 +103,8 @@ function Steps({ step, id, style }: { step: number; id: SceneId; style?: CSSProp
 
 const Line = ({ title, lead }: { title: string; lead?: string }) => (
   <div>
-    <div style={{ ...T.title, fontSize: 62 }}>{title}</div>
-    {lead && <div style={{ ...T.lead, marginTop: 18, maxWidth: 620 }}>{lead}</div>}
+    <div style={{ ...T.title, fontSize: 62 }}>{L(title)}</div>
+    {lead && <div style={{ ...T.lead, marginTop: 18, maxWidth: 620 }}>{L(lead)}</div>}
   </div>
 );
 
@@ -149,7 +155,7 @@ export function Open() {
       <PerspectiveRoad />
       <div style={{ position: "absolute", left: 0, right: 0, top: 250, textAlign: "center" }}>
         <Rise delay={t - 4} y={30}>
-          <div style={{ ...T.hero, fontSize: 138 }}>Can I still drive?</div>
+          <div style={{ ...T.hero, fontSize: 138 }}>{L("Can I still drive?")}</div>
         </Rise>
       </div>
       <div style={{ position: "absolute", left: 80, top: 70 }}>
@@ -213,7 +219,7 @@ function Scattered({ start }: { start: number }) {
             <div style={{ width: 64, height: 64, borderRadius: 18, background: "rgba(255,255,255,0.07)", display: "flex", alignItems: "center", justifyContent: "center" }}>
               <Icon name={c.icon} size={38} />
             </div>
-            <div style={{ fontFamily: body, fontWeight: 700, fontSize: 30, color: "#fff" }}>{c.label}</div>
+            <div style={{ fontFamily: body, fontWeight: 700, fontSize: 30, color: "#fff" }}>{L(c.label)}</div>
           </div>
         );
       })}
@@ -234,7 +240,7 @@ export function Problem() {
   return (
     <Scene id="problem">
       <div style={{ position: "absolute", left: 150, top: 120 }}>
-        <Kicker delay={4}>The question today</Kicker>
+        <Kicker delay={4}>{L("The question today")}</Kicker>
       </div>
       <div style={{ position: "absolute", left: 980, top: 300, opacity: fieldOut }}>
         <DotField lit={lit} single={single} />
@@ -246,9 +252,9 @@ export function Problem() {
             at: b1,
             node: (
               <div>
-                <div style={{ ...T.hero, fontSize: 150 }}>{count} million</div>
-                <div style={{ ...T.lead, marginTop: 14 }}>licensed drivers 65 and older in the U.S.</div>
-                <div style={{ ...T.small, marginTop: 18 }}>Source: CDC, 2022 data</div>
+                <div style={{ ...T.hero, fontSize: 150 }}>{LANG === "ja" ? `${count * 100}万人` : `${count} million`}</div>
+                <div style={{ ...T.lead, marginTop: 14 }}>{L("licensed drivers 65 and older in the U.S.")}</div>
+                <div style={{ ...T.small, marginTop: 18 }}>{L("Source: CDC, 2022 data")}</div>
               </div>
             ),
           },
@@ -256,8 +262,8 @@ export function Problem() {
             at: b2,
             node: (
               <div>
-                <div style={{ ...T.hero, fontSize: 120 }}>A few hundred</div>
-                <div style={{ ...T.lead, marginTop: 14 }}>certified driver rehabilitation specialists for the whole country</div>
+                <div style={{ ...T.hero, fontSize: 120 }}>{L("A few hundred")}</div>
+                <div style={{ ...T.lead, marginTop: 14 }}>{L("certified driver rehabilitation specialists for the whole country")}</div>
               </div>
             ),
           },
@@ -265,7 +271,7 @@ export function Problem() {
             at: b3,
             node: (
               <div>
-                <div style={{ ...T.hero, fontSize: 92, lineHeight: 1.08 }}>The evidence is scattered</div>
+                <div style={{ ...T.hero, fontSize: 92, lineHeight: 1.08 }}>{L("The evidence is scattered")}</div>
               </div>
             ),
           },
@@ -273,8 +279,8 @@ export function Problem() {
             at: b4,
             node: (
               <div>
-                <div style={{ ...T.hero, fontSize: 92, lineHeight: 1.08 }}>Decisions come late</div>
-                <div style={{ ...T.lead, marginTop: 18 }}>On worry instead of evidence</div>
+                <div style={{ ...T.hero, fontSize: 92, lineHeight: 1.08 }}>{L("Decisions come late")}</div>
+                <div style={{ ...T.lead, marginTop: 18 }}>{L("On worry instead of evidence")}</div>
               </div>
             ),
           },
@@ -345,7 +351,7 @@ export function Solution() {
       </div>
       <div style={{ position: "absolute", left: 0, right: 0, top: 176, textAlign: "center" }}>
         <Rise delay={20}>
-          <div style={{ ...T.lead, fontSize: 30 }}>Part of a doctor's visit</div>
+          <div style={{ ...T.lead, fontSize: 30 }}>{L("Part of a doctor's visit")}</div>
         </Rise>
       </div>
       <svg width="1920" height="1080" style={{ position: "absolute", inset: 0 }}>
@@ -360,12 +366,12 @@ export function Solution() {
       <RoadLine d={flowPaths.c} start={a3 + 8} duration={30} opacity={0.45} width={3} />
       <RoadLine d={flowPaths.d} start={a5} duration={20} opacity={0.6} width={3} />
       <RoadLine d={flowPaths.e} start={a6} duration={14} opacity={0.6} width={3} />
-      <Node x={90} y={330} w={390} delay={a1} icon={<HealthKeyTile size={40} />} title="Health record" sub="From HealthKey, by consent" />
-      <Node x={90} y={540} w={390} delay={a2} icon={<Icon name="clipboard" size={38} />} title="Her answers" sub="In her own words" />
-      <Node x={90} y={750} w={390} delay={a3} icon={<Icon name="wheel" size={38} />} title="Simulator drives" sub="Chosen for her" />
-      <Node x={660} y={540} w={310} delay={a0 + 6} accent={C.hk} icon={<Icon name="record" size={38} />} title="One record" sub="Every value keeps its source" />
-      <Node x={1090} y={540} w={300} delay={a5} icon={<Icon name="pen" size={38} />} title="Clinician" sub="Reviews and signs" />
-      <Node x={1500} y={540} w={330} delay={a6} accent={C.signal} icon={<Icon name="phone" size={38} />} title="Her plan" sub="One of four outcomes" />
+      <Node x={90} y={330} w={390} delay={a1} icon={<HealthKeyTile size={40} />} title={L("Health record")} sub={L("From HealthKey, by consent")} />
+      <Node x={90} y={540} w={390} delay={a2} icon={<Icon name="clipboard" size={38} />} title={L("Her answers")} sub={L("In her own words")} />
+      <Node x={90} y={750} w={390} delay={a3} icon={<Icon name="wheel" size={38} />} title={L("Simulator drives")} sub={L("Chosen for her")} />
+      <Node x={660} y={540} w={310} delay={a0 + 6} accent={C.hk} icon={<Icon name="record" size={38} />} title={L("One record")} sub={L("Every value keeps its source")} />
+      <Node x={1090} y={540} w={300} delay={a5} icon={<Icon name="pen" size={38} />} title={L("Clinician")} sub={L("Reviews and signs")} />
+      <Node x={1500} y={540} w={330} delay={a6} accent={C.signal} icon={<Icon name="phone" size={38} />} title={L("Her plan")} sub={L("One of four outcomes")} />
     </Scene>
   );
 }
@@ -442,10 +448,13 @@ export function Checkin() {
       </Enter>
       <div style={{ position: "absolute", left: 640, top: 150, opacity: 0.35 + focusIpad * 0.65, transform: `scale(${zoom})`, transformOrigin: "30% 55%" }}>
         <IPad shots={ipadShots} scale={sc}>
-          <Highlight x={330} y={133} w={370} h={512} delay={most} radius={26} />
+          {(() => {
+            const r = rectOf("attention", { x: 330, y: 133, w: 370, h: 512 });
+            return <Highlight x={r.x} y={r.y} w={r.w} h={r.h} delay={most} radius={26} />;
+          })()}
         </IPad>
       </div>
-      <Callout text="Margaret has checked in" delay={ipad + 4} style={{ left: 660, top: 1010 }} />
+      <Callout text={L("Margaret has checked in")} delay={ipad + 4} style={{ left: 660, top: 1010 }} />
     </Scene>
   );
 }
@@ -465,16 +474,16 @@ function useCamera(keys: { f: number; s: number; F: [number, number]; P?: [numbe
   const s = mix(a.s, b.s);
   const F = [mix(a.F[0], b.F[0]), mix(a.F[1], b.F[1])];
   const P = [mix(a.P[0], b.P[0]), mix(a.P[1], b.P[1])];
-  return { transform: `translate(${P[0] - s * F[0]}px, ${P[1] - s * F[1]}px) scale(${s})`, transformOrigin: "0 0" } as CSSProperties;
+  return { style: { transform: `translate(${P[0] - s * F[0]}px, ${P[1] - s * F[1]}px) scale(${s})`, transformOrigin: "0 0" } as CSSProperties, zoom: s };
 }
 
 /** Screen position of a point on an iPad screen placed at (left, top) with this scale. */
 const onIpad = (left: number, top: number, scale: number, x: number, y: number): [number, number] => [left + (IPAD_BEZEL + x) * scale, top + (IPAD_BEZEL + y) * scale];
 
 const reasons = [
-  { phrase: "Brake reaction", title: "Brake reaction", why: "New sleep medicine can slow reactions", row: { y: 183, h: 107 } },
-  { phrase: "A night drive in low light", title: "Night drive", why: "Cataract, left eye", row: { y: 662, h: 90 } },
-  { phrase: "Left turns, where", title: "Left turns across traffic", why: "Where most close calls happen", row: { y: 378, h: 88 } },
+  { phrase: "Brake reaction", title: "Brake reaction", why: "New sleep medicine can slow reactions", row: rectOf("assign-reaction", { x: 735, y: 183, w: 400, h: 107 }) },
+  { phrase: "A night drive in low light", title: "Night drive", why: "Cataract, left eye", row: rectOf("assign-night", { x: 735, y: 662, w: 400, h: 90 }) },
+  { phrase: "Left turns, where", title: "Left turns across traffic", why: "Where most close calls happen", row: rectOf("assign-left", { x: 735, y: 378, w: 400, h: 88 }) },
 ];
 
 export function Assign() {
@@ -482,9 +491,9 @@ export function Assign() {
   const picks = at("assign", "assigns the drives");
   const sees = at("assign", "Margaret sees which drives");
   const sc = 0.92;
-  const L = 90;
+  const left = 90;
   const Tp = 140;
-  const card = onIpad(L, Tp, sc, 930, 470);
+  const card = onIpad(left, Tp, sc, 930, 470);
   const cam = useCamera([
     { f: 0, s: 1, F: [960, 540] },
     { f: picks, s: 1, F: [960, 540] },
@@ -495,11 +504,11 @@ export function Assign() {
   const listOut = interpolate(frame, [sees - 10, sees + 10], [1, 0], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
   return (
     <Scene id="assign" drift={0.01}>
-      <AbsoluteFill style={cam}>
-        <Enter delay={0} style={{ left: L, top: Tp }}>
+      <AbsoluteFill style={cam.style}>
+        <Enter delay={0} style={{ left: left, top: Tp }}>
           <IPad shots={[{ src: "i-assign", at: 0 }]} scale={sc}>
             {reasons.map((r) => (
-              <Highlight key={r.phrase} x={735} y={r.row.y} w={400} h={r.row.h} delay={at("assign", r.phrase) - 4} radius={14} />
+              <Highlight key={r.phrase} x={r.row.x + 8} y={r.row.y + 6} w={r.row.w - 16} h={r.row.h - 12} delay={at("assign", r.phrase) - 4} radius={14} />
             ))}
           </IPad>
         </Enter>
@@ -511,8 +520,8 @@ export function Assign() {
               <div style={{ display: "flex", gap: 18 }}>
                 <div style={{ width: 6, borderRadius: 3, background: C.signal, flexShrink: 0 }} />
                 <div>
-                  <div style={{ fontFamily: display, fontWeight: 800, fontSize: 38, color: "#fff", lineHeight: 1.1 }}>{r.title}</div>
-                  <div style={{ ...T.lead, fontSize: 27, marginTop: 6 }}>{r.why}</div>
+                  <div style={{ fontFamily: display, fontWeight: 800, fontSize: 38, color: "#fff", lineHeight: 1.1 }}>{L(r.title)}</div>
+                  <div style={{ ...T.lead, fontSize: 27, marginTop: 6 }}>{L(r.why)}</div>
                 </div>
               </div>
             </Rise>
@@ -522,7 +531,7 @@ export function Assign() {
       <Enter delay={sees - 6} y={80} style={{ left: 1390, top: 150 }}>
         <Phone shots={[{ src: "p-assigned", at: 0 }]} scale={0.9} />
       </Enter>
-      <Steps step={2} id="assign" />
+      <Steps step={2} id="assign" zoom={cam.zoom} />
     </Scene>
   );
 }
@@ -590,7 +599,7 @@ export function Drive() {
           </IPad>
         </div>
       )}
-      {frame >= pull + 40 && <Callout text="Each score appears as its drive finishes" delay={pull + 44} style={{ left: x1 + 30, top: 1010 }} />}
+      {frame >= pull + 40 && <Callout text={L("Each score appears as its drive finishes")} delay={pull + 44} style={{ left: x1 + 30, top: 1010 }} />}
       <Steps step={3} id="drive" style={{ left: "auto", right: 60 }} />
     </Scene>
   );
@@ -622,7 +631,7 @@ export function Record() {
       <Enter delay={8} style={{ left: 1210, top: 240 }}>
         <div style={{ width: 620, borderRadius: 32, background: "#fff", padding: "34px 36px", boxShadow: "0 50px 100px -30px rgba(0,0,0,0.6)" }}>
           <HealthKeyLogo height={40} light={false} />
-          <div style={{ fontFamily: display, fontWeight: 800, fontSize: 38, color: C.asphalt, marginTop: 24 }}>Margaret's health record</div>
+          <div style={{ fontFamily: display, fontWeight: 800, fontSize: 38, color: C.asphalt, marginTop: 24 }}>{L("Margaret's health record")}</div>
           <div style={{ marginTop: 18 }}>
             {rows.map((r, i) => {
               const d = 26 + i * 18;
@@ -635,8 +644,8 @@ export function Record() {
                     </svg>
                   </div>
                   <div>
-                    <div style={{ fontFamily: body, fontWeight: 700, fontSize: 26, color: C.asphalt }}>{r.t}</div>
-                    <div style={{ fontFamily: body, fontSize: 20, color: C.graphite }}>{r.s}</div>
+                    <div style={{ fontFamily: body, fontWeight: 700, fontSize: 26, color: C.asphalt }}>{L(r.t)}</div>
+                    <div style={{ fontFamily: body, fontSize: 20, color: C.graphite }}>{L(r.s)}</div>
                   </div>
                 </div>
               );
@@ -671,12 +680,15 @@ export function Review() {
   const signs = at("review", "and signs");
   const sc = 1.06;
   const { w } = ipadSize(sc);
-  const L = (1920 - w) / 2;
+  const left = (1920 - w) / 2;
   const Tp = 110;
-  const row = onIpad(L, Tp, sc, 565, 578);
-  const why = onIpad(L, Tp, sc, 565, 700);
-  const decision = onIpad(L, Tp, sc, 1010, 200);
-  const signArea = onIpad(L, Tp, sc, 1010, 690);
+  const rowRect = rectOf("row", { x: 338, y: 490, w: 454, h: 178 });
+  const whyRect = rectOf("why", { x: 330, y: 603, w: 470, h: 190 });
+  const decisionRect = rectOf("decision", { x: 865, y: 80, w: 290, h: 232 });
+  const row = onIpad(left, Tp, sc, ...centerOf(rowRect));
+  const why = onIpad(left, Tp, sc, centerOf(whyRect)[0], Math.min(700, centerOf(whyRect)[1]));
+  const decision = onIpad(left, Tp, sc, ...centerOf(decisionRect));
+  const signArea = onIpad(left, Tp, sc, 1010, 690);
   const cam = useCamera([
     { f: 0, s: 1, F: [960, 540] },
     { f: measured - 14, s: 1, F: [960, 540] },
@@ -700,22 +712,22 @@ export function Review() {
   ];
   return (
     <Scene id="review" drift={0.01}>
-      <AbsoluteFill style={cam}>
-        <Enter delay={0} y={50} style={{ left: L, top: Tp }}>
+      <AbsoluteFill style={cam.style}>
+        <Enter delay={0} y={50} style={{ left: left, top: Tp }}>
           <IPad shots={shots} scale={sc}>
-            <Highlight x={338} y={490} w={454} h={178} delay={measured + 10} radius={16} />
-            <Highlight x={330} y={603} w={470} h={190} delay={steps + 12} radius={18} />
-            <Highlight x={865} y={80} w={290} h={232} delay={decides} radius={16} />
+            <Highlight x={rowRect.x + 8} y={rowRect.y} w={rowRect.w - 16} h={rowRect.h} delay={measured + 10} radius={16} />
+            <Highlight x={whyRect.x} y={whyRect.y} w={whyRect.w} h={whyRect.h} delay={steps + 12} radius={18} />
+            <Highlight x={decisionRect.x} y={decisionRect.y} w={decisionRect.w} h={decisionRect.h} delay={decides} radius={16} />
           </IPad>
         </Enter>
       </AbsoluteFill>
       <Label from={decides + 6} to={signs - 16} style={{ left: 1270, top: 470 }}>
-        The clinician decides
+        {L("The clinician decides")}
       </Label>
       <Label from={signs - 4} to={signs + 36} style={{ left: 1270, top: 650 }}>
-        Signed
+        {L("Signed")}
       </Label>
-      <Steps step={4} id="review" />
+      <Steps step={4} id="review" zoom={cam.zoom} />
     </Scene>
   );
 }
@@ -739,9 +751,9 @@ function DriveBars({ delay }: { delay: number }) {
         return (
           <div key={r.l} style={{ marginTop: i ? 16 : 0, opacity: Math.min(1, p * 2) }}>
             <div style={{ display: "flex", justifyContent: "space-between", fontFamily: body, fontSize: 24, color: "#fff" }}>
-              <span style={{ fontWeight: 700 }}>{r.l}</span>
+              <span style={{ fontWeight: 700 }}>{L(r.l)}</span>
               <span style={{ fontFamily: display, fontWeight: 800 }}>
-                {r.v} <span style={{ fontFamily: body, fontWeight: 400, color: "rgba(255,255,255,0.55)" }}>of 10</span>
+                {r.v} <span style={{ fontFamily: body, fontWeight: 400, color: "rgba(255,255,255,0.55)" }}>{L("of 10")}</span>
               </span>
             </div>
             <div style={{ height: 8, borderRadius: 4, background: "rgba(255,255,255,0.12)", marginTop: 8, overflow: "hidden" }}>
@@ -777,7 +789,7 @@ export function Clear() {
           <Gauge value={92} delay={clear} size={360} />
           <Rise delay={clear + 20}>
             <div style={{ fontFamily: display, fontWeight: 800, fontSize: 36, color: "#fff" }}>DriverScore</div>
-            <div style={{ ...T.lead, fontSize: 25, marginTop: 6, maxWidth: 300 }}>One part of Dana's decision</div>
+            <div style={{ ...T.lead, fontSize: 25, marginTop: 6, maxWidth: 300 }}>{L("One part of Dana's decision")}</div>
           </Rise>
         </div>
       </div>
@@ -808,14 +820,17 @@ export function Stop() {
   return (
     <Scene id="stop" drift={0.02}>
       <div style={{ position: "absolute", left: 150, top: 70 }}>
-        <Kicker delay={2}>Time to stop</Kicker>
+        <Kicker delay={2}>{L("Time to stop")}</Kicker>
       </div>
       <Enter delay={0} style={{ left: 120, top: 190, opacity: 1 - phoneIn * 0.6 }}>
         <IPad shots={[{ src: "i-review-stop-signed", at: 0 }]} scale={0.66}>
-          <Highlight x={866} y={553} w={289} h={60} delay={person - 4} radius={14} />
+          {(() => {
+            const r = rectOf("discussed", { x: 866, y: 553, w: 289, h: 60 });
+            return <Highlight x={r.x} y={r.y} w={r.w} h={r.h} delay={person - 4} radius={14} />;
+          })()}
         </IPad>
       </Enter>
-      <Callout text="Explained in person first" delay={person + 4} style={{ left: 140, top: 830, opacity: 1 - phoneIn }} />
+      <Callout text={L("Explained in person first")} delay={person + 4} style={{ left: 140, top: 830, opacity: 1 - phoneIn }} />
       <div style={{ position: "absolute", left: 1180, top: 100, opacity: phoneIn, transform: `translateY(${(1 - phoneIn) * 60}px)` }}>
         <Phone shots={shots} scale={1} />
       </div>
@@ -837,7 +852,7 @@ export function Outcomes() {
     <Scene id="outcomes" drift={0.02}>
       <div style={{ position: "absolute", left: 0, right: 0, top: 170, textAlign: "center" }}>
         <Rise delay={4}>
-          <div style={{ ...T.title, fontSize: 72 }}>Four outcomes, each with a plan</div>
+          <div style={{ ...T.title, fontSize: 72 }}>{L("Four outcomes, each with a plan")}</div>
         </Rise>
       </div>
       <RoadLine d="M150 760 C 600 760, 1320 760, 1770 760" start={plan - 10} duration={40} />
@@ -848,8 +863,8 @@ export function Outcomes() {
             <Rise delay={d} y={34}>
               <div style={{ height: 300, borderRadius: 30, background: C.asphalt2, padding: "34px 30px", boxShadow: "0 40px 80px -30px rgba(0,0,0,0.6), inset 0 0 0 1px rgba(255,255,255,0.07)" }}>
                 <div style={{ width: 54, height: 6, borderRadius: 3, background: C.signal }} />
-                <div style={{ fontFamily: display, fontWeight: 800, fontSize: 40, lineHeight: 1.08, color: "#fff", marginTop: 26 }}>{c.title}</div>
-                <div style={{ fontFamily: body, fontSize: 25, lineHeight: 1.4, color: "rgba(255,255,255,0.7)", marginTop: 16 }}>{c.line}</div>
+                <div style={{ fontFamily: display, fontWeight: 800, fontSize: 40, lineHeight: 1.08, color: "#fff", marginTop: 26 }}>{L(c.title)}</div>
+                <div style={{ fontFamily: body, fontSize: 25, lineHeight: 1.4, color: "rgba(255,255,255,0.7)", marginTop: 16 }}>{L(c.line)}</div>
               </div>
             </Rise>
           </div>
@@ -857,7 +872,7 @@ export function Outcomes() {
       })}
       <div style={{ position: "absolute", left: 0, right: 0, top: 820, textAlign: "center" }}>
         <Rise delay={plan + 4}>
-          <div style={{ ...T.lead, color: "#fff" }}>Many causes can be treated, so there's often a path back to driving.</div>
+          <div style={{ ...T.lead, color: "#fff" }}>{L("Many causes can be treated, so there's often a path back to driving.")}</div>
         </Rise>
       </div>
     </Scene>
@@ -876,7 +891,7 @@ export function Trust() {
   return (
     <Scene id="trust" drift={0.02}>
       <div style={{ position: "absolute", left: 300, top: 120 }}>
-        <Kicker delay={2}>Safeguards</Kicker>
+        <Kicker delay={2}>{L("Safeguards")}</Kicker>
       </div>
       <RoadLine d="M339 270 L339 860" start={rows[0].at - 6} duration={rows[3].at - rows[0].at + 14} width={4} opacity={0.6} />
       {rows.map((r, i) => (
@@ -886,7 +901,7 @@ export function Trust() {
               <div style={{ width: 80, height: 80, borderRadius: 40, background: C.asphalt2, boxShadow: `inset 0 0 0 2px ${C.signal}`, display: "flex", alignItems: "center", justifyContent: "center" }}>
                 <Icon name={r.icon} size={38} />
               </div>
-              <div style={{ fontFamily: display, fontWeight: 800, fontSize: 54, color: "#fff", letterSpacing: "-0.01em" }}>{r.text}</div>
+              <div style={{ fontFamily: display, fontWeight: 800, fontSize: 54, color: "#fff", letterSpacing: "-0.01em" }}>{L(r.text)}</div>
             </div>
           </Rise>
         </div>
@@ -914,20 +929,20 @@ export function Close() {
       </div>
       <div style={{ position: "absolute", left: 0, right: 0, top: 540, textAlign: "center" }}>
         <Rise delay={at("close", "One clinician-signed plan") - 4}>
-          <div style={{ ...T.lead, fontSize: 36, color: "rgba(255,255,255,0.85)" }}>One clinician-signed plan for every older driver</div>
+          <div style={{ ...T.lead, fontSize: 36, color: "rgba(255,255,255,0.85)" }}>{L("One clinician-signed plan for every older driver")}</div>
         </Rise>
       </div>
       <div style={{ position: "absolute", left: 0, right: 0, top: 740, display: "flex", justifyContent: "center" }}>
         <Rise delay={60}>
           <div style={{ display: "flex", alignItems: "center", gap: 18 }}>
-            <span style={{ fontFamily: body, fontSize: 28, color: "rgba(255,255,255,0.6)" }}>Powered by</span>
+            <span style={{ fontFamily: body, fontSize: 28, color: "rgba(255,255,255,0.6)" }}>{L("Powered by")}</span>
             <HealthKeyLogo height={44} />
           </div>
         </Rise>
       </div>
       <div style={{ position: "absolute", left: 0, right: 0, bottom: 90, textAlign: "center" }}>
         <Rise delay={60}>
-          <div style={{ fontFamily: body, fontSize: 24, color: "rgba(255,255,255,0.45)" }}>can-i-still-drive.reedahlstrom.workers.dev</div>
+          <div style={{ fontFamily: body, fontSize: 24, color: "rgba(255,255,255,0.45)" }}>can-i-still-drive.reedahlstrom.workers.dev{LANG === "ja" && "/?lang=ja"}</div>
         </Rise>
       </div>
       <AbsoluteFill style={{ background: "#000", opacity: out }} />

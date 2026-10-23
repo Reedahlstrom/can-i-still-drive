@@ -3,6 +3,7 @@ import { AnimatePresence, motion } from "motion/react";
 import { useEffect, useRef, useState } from "react";
 import { patient, referringDoctor, specialist } from "../data/demo";
 import { conditionLibrary, draftNote, outcomeCopy, planLibrary } from "../data/scenarios";
+import { useT } from "../i18n/useT";
 import { addMonths, shortDate, timeOf, today } from "../lib/dates";
 import type { DriveScore, Outcome } from "../lib/score";
 import { determinationFor, useDemo, useScore, type Determination } from "../state/store";
@@ -16,9 +17,10 @@ const outcomes: Outcome[] = ["clear", "conditions", "pause", "stop"];
 
 function DriveRow({ d }: { d: DriveScore }) {
   const [open, setOpen] = useState(false);
+  const t = useT();
   const low = d.done && d.points < 6;
   return (
-    <div>
+    <div data-capture={`row-${d.id}`}>
       <button onClick={() => setOpen(!open)} aria-expanded={open} className="flex w-full items-center gap-4 px-5 py-3 text-left">
         <span className="w-44 shrink-0 text-[15px] font-semibold leading-snug">{d.name}</span>
         <span className={`h-2 flex-1 overflow-hidden rounded-full ${low ? "bg-alert-tint" : "bg-mist"}`}>
@@ -30,7 +32,7 @@ function DriveRow({ d }: { d: DriveScore }) {
               {d.points} <span className="font-normal text-graphite">/ 10</span>
             </>
           ) : (
-            <span className="font-sans text-[14px] font-normal text-graphite">Not completed</span>
+            <span className="font-sans text-[14px] font-normal text-graphite">{t("Not completed")}</span>
           )}
         </span>
         <ChevronDown size={18} className={`text-graphite transition-transform ${open ? "rotate-180" : ""}`} />
@@ -39,13 +41,13 @@ function DriveRow({ d }: { d: DriveScore }) {
         {open && d.done && (
           <motion.div initial={{ height: 0 }} animate={{ height: "auto" }} exit={{ height: 0 }} className="overflow-hidden">
             <dl className="mx-5 mb-3 grid grid-cols-[88px_1fr] gap-x-3 gap-y-1.5 rounded-xl bg-canvas px-4 py-3 text-[14px] leading-snug">
-              <dt className="font-semibold text-graphite">Measured</dt>
+              <dt className="font-semibold text-graphite">{t("Measured")}</dt>
               <dd>{d.metrics}</dd>
-              <dt className="font-semibold text-graphite">Rule</dt>
+              <dt className="font-semibold text-graphite">{t("Rule")}</dt>
               <dd>{d.rule}</dd>
-              <dt className="font-semibold text-graphite">Result</dt>
+              <dt className="font-semibold text-graphite">{t("Result")}</dt>
               <dd className="font-semibold">
-                {d.reason} {d.points} of 10.
+                {d.reason} {t("{p} of 10.", { p: d.points })}
               </dd>
             </dl>
           </motion.div>
@@ -66,6 +68,7 @@ function Chip({ on, label, onClick }: { on: boolean; label: string; onClick: () 
 function SignaturePad({ onSigned, value }: { onSigned: (v: string | null) => void; value: string | null }) {
   const ref = useRef<HTMLCanvasElement>(null);
   const drawing = useRef(false);
+  const t = useT();
   const moved = useRef(0);
   const signed = !!value;
   useEffect(() => {
@@ -103,7 +106,8 @@ function SignaturePad({ onSigned, value }: { onSigned: (v: string | null) => voi
       <canvas
         ref={ref}
         className="h-[76px] w-full touch-none rounded-xl border-2 border-dashed border-line-strong bg-canvas"
-        aria-label="Signature"
+        aria-label={t("Signature")}
+        data-capture="signature"
         onPointerDown={(e) => {
           drawing.current = true;
           moved.current = 0;
@@ -129,10 +133,10 @@ function SignaturePad({ onSigned, value }: { onSigned: (v: string | null) => voi
         }}
         onPointerCancel={() => (drawing.current = false)}
       />
-      {!signed && <span className="pointer-events-none absolute inset-0 flex items-center justify-center text-[15px] text-graphite">Sign here</span>}
+      {!signed && <span className="pointer-events-none absolute inset-0 flex items-center justify-center text-[15px] text-graphite">{t("Sign here")}</span>}
       {signed && (
         <button onClick={() => onSigned(null)} className="absolute top-2 right-2 rounded-lg bg-white px-2.5 py-1 text-[13px] font-semibold text-graphite shadow-sm">
-          Clear
+          {t("signature::Clear")}
         </button>
       )}
     </div>
@@ -148,6 +152,8 @@ export function ReviewSign() {
   const selfRating = useDemo((s) => s.selfRating);
   const result = useScore();
   const attention = useAttention();
+  const t = useT();
+  const first = t(patient.first);
   const [more, setMore] = useState(false);
   if (!d) return null;
 
@@ -177,19 +183,19 @@ export function ReviewSign() {
   return (
     <div className="flex h-full min-w-0 flex-1">
       <div className="min-w-0 flex-1">
-        <Pane title="Review and sign" sub={`${patient.first} ${patient.last}, ${shortDate(today())}`}>
+        <Pane title={t("Review and sign")} sub={`${t(`${patient.first} ${patient.last}`)}${t(", ")}${shortDate(today())}`}>
           {(hardStops.length > 0 || flags.length > 0) && (
-            <Card title="Needs attention" className="mb-5">
+            <Card title={t("Needs attention")} className="mb-5">
               <div className="divide-y divide-line pb-1">
                 {hardStops.map((f) => (
                   <div key={f.text} className="flex items-center gap-3 px-5 py-3">
-                    <span className="shrink-0 rounded-md bg-alert px-2 py-0.5 text-[12px] font-bold text-white">Hard stop</span>
+                    <span className="shrink-0 rounded-md bg-alert px-2 py-0.5 text-[12px] font-bold text-white">{t("Hard stop")}</span>
                     <span className="text-[16px] font-semibold">{f.text}</span>
                   </div>
                 ))}
                 {flags.map((f) => (
                   <div key={f.text} className="flex items-center gap-3 px-5 py-3">
-                    <span className="shrink-0 rounded-md bg-signal-soft px-2 py-0.5 text-[12px] font-bold text-signal-ink">Flag</span>
+                    <span className="shrink-0 rounded-md bg-signal-soft px-2 py-0.5 text-[12px] font-bold text-signal-ink">{t("Flag")}</span>
                     <span className="text-[16px]">{f.text}</span>
                   </div>
                 ))}
@@ -202,7 +208,9 @@ export function ReviewSign() {
               <div>
                 <div className="font-display text-[22px] font-extrabold">DriverScore {result.total}</div>
                 <div className="text-[14px] text-graphite">
-                  Average of {result.completed} {result.completed === 1 ? "drive" : "drives"}, each out of 10. Version 0, not yet validated. Tap a drive for its measurement and rule.
+                  {result.completed === 1
+                    ? t("Average of 1 drive, each out of 10. Version 0, not yet validated. Tap a drive for its measurement and rule.")
+                    : t("Average of {n} drives, each out of 10. Version 0, not yet validated. Tap a drive for its measurement and rule.", { n: result.completed })}
                 </div>
               </div>
             </div>
@@ -212,7 +220,7 @@ export function ReviewSign() {
               ))}
             </div>
           </Card>
-          <Card title="Why this suggestion" className="mt-5">
+          <Card title={t("Why this suggestion")} className="mt-5" capture="why">
             <ol className="px-5 pt-1 pb-4">
               {result.logic.map((step, i) => {
                 const last = i === result.logic.length - 1;
@@ -232,13 +240,13 @@ export function ReviewSign() {
             </ol>
           </Card>
           <div className="mt-5 grid grid-cols-2 gap-5">
-            <Card title="Self-rating">
+            <Card title={t("Self-rating")}>
               <div className="px-5 pt-1 pb-4 text-[16px] leading-snug">
-                {selfRating ? `${patient.first} rated her drive ${selfRating} of 5` : "Not given yet"}
-                {postFeel ? `, felt ${postFeel.toLowerCase()}.` : "."} DriverScore {result.total}.
+                {selfRating ? t("{name} rated her drive {n} of 5", { name: first, n: selfRating }) : t("Not given yet")}
+                {postFeel ? t(", felt {feel}.", { feel: t(postFeel).toLowerCase() }) : t(".")} DriverScore {result.total}.
               </div>
             </Card>
-            <Card title="From her record">
+            <Card title={t("From her record")}>
               <div className="px-5 pt-1 pb-4 text-[15px] leading-snug">
                 {attention.slice(0, 2).map((a) => (
                   <div key={a.title} className="mb-1">
@@ -253,41 +261,41 @@ export function ReviewSign() {
 
       <aside className="flex w-[340px] shrink-0 flex-col border-l border-line bg-paper">
         <div className="no-scrollbar min-h-0 flex-1 overflow-y-auto px-6 pt-[calc(var(--safe-top,0px)+24px)] pb-4">
-          <h2 className={label}>Your decision</h2>
-          <div className="mt-2 flex flex-col gap-2" role="radiogroup" aria-label="Outcome">
+          <h2 className={label}>{t("Your decision")}</h2>
+          <div className="mt-2 flex flex-col gap-2" role="radiogroup" aria-label={t("Outcome")} data-capture="decision">
             {outcomes.map((o) => {
               const on = d.outcome === o;
               return (
-                <button key={o} role="radio" aria-checked={on} onClick={() => pickOutcome(o)} className={`flex items-center justify-between rounded-xl border-2 px-4 py-3 text-left transition-colors ${on ? "border-asphalt bg-asphalt text-white" : "border-line hover:border-line-strong"}`}>
-                  <span className="text-[16px] font-semibold">{outcomeCopy[o].label}</span>
-                  {result.suggested === o && <span className={`rounded-md px-2 py-0.5 text-[12px] font-bold ${on ? "bg-white/15 text-white" : "bg-signal-soft text-signal-ink"}`}>Suggested</span>}
+                <button key={o} role="radio" data-outcome={o} aria-checked={on} onClick={() => pickOutcome(o)} className={`flex items-center justify-between rounded-xl border-2 px-4 py-3 text-left transition-colors ${on ? "border-asphalt bg-asphalt text-white" : "border-line hover:border-line-strong"}`}>
+                  <span className="text-[16px] font-semibold">{t(outcomeCopy[o].label)}</span>
+                  {result.suggested === o && <span className={`rounded-md px-2 py-0.5 text-[12px] font-bold ${on ? "bg-white/15 text-white" : "bg-signal-soft text-signal-ink"}`}>{t("Suggested")}</span>}
                 </button>
               );
             })}
           </div>
 
           {d.outcome === null ? (
-            <p className="mt-5 text-[15px] leading-snug text-graphite">Choose the outcome. The plan and note fill in, and you can change anything before signing.</p>
+            <p className="mt-5 text-[15px] leading-snug text-graphite">{t("Choose the outcome. The plan and note fill in, and you can change anything before signing.")}</p>
           ) : (
             <>
               {d.outcome === "conditions" && (
                 <>
-                  <h2 className={`mt-6 ${label}`}>Conditions</h2>
+                  <h2 className={`mt-6 ${label}`}>{t("Conditions")}</h2>
                   <div className="mt-2 flex flex-wrap gap-2">
                     {conditionLibrary.map((c) => (
-                      <Chip key={c} label={c} on={d.conditions.includes(c)} onClick={() => update({ conditions: toggle(d.conditions, c) })} />
+                      <Chip key={c} label={t(c)} on={d.conditions.includes(c)} onClick={() => update({ conditions: toggle(d.conditions, c) })} />
                     ))}
                   </div>
                 </>
               )}
 
-              <h2 className={`mt-6 ${label}`}>Plan</h2>
+              <h2 className={`mt-6 ${label}`}>{t("Plan")}</h2>
               <div className="mt-2 flex flex-wrap gap-2">
                 {d.plan.map((p) => (
-                  <Chip key={p} label={p} on onClick={() => update({ plan: toggle(d.plan, p) })} />
+                  <Chip key={p} label={t(p)} on onClick={() => update({ plan: toggle(d.plan, p) })} />
                 ))}
                 <button onClick={() => setMore(!more)} aria-expanded={more} className="rounded-full border-2 border-dashed border-line-strong px-3.5 py-1.5 text-[14px] font-semibold text-graphite hover:text-asphalt">
-                  {more ? "Done" : "Add"}
+                  {more ? t("Done") : t("Add")}
                 </button>
               </div>
               {more && (
@@ -295,40 +303,41 @@ export function ReviewSign() {
                   {planLibrary
                     .filter((p) => !d.plan.includes(p))
                     .map((p) => (
-                      <Chip key={p} label={p} on={false} onClick={() => update({ plan: [...d.plan, p] })} />
+                      <Chip key={p} label={t(p)} on={false} onClick={() => update({ plan: [...d.plan, p] })} />
                     ))}
                 </div>
               )}
 
               {(d.outcome === "clear" || d.outcome === "conditions") && (
                 <>
-                  <h2 className={`mt-6 ${label}`}>Re-test in</h2>
+                  <h2 className={`mt-6 ${label}`}>{t("Re-test in")}</h2>
                   <div className="mt-2 flex items-center gap-3">
                     <Segmented
-                      label="Re-test"
+                      label={t("Re-test")}
                       value={d.retestMonths}
                       onChange={(v) => update({ retestMonths: v })}
                       options={[
-                        { value: 3, label: "3 mo" },
-                        { value: 6, label: "6 mo" },
-                        { value: 12, label: "12 mo" },
+                        { value: 3, label: t("{n} mo", { n: 3 }) },
+                        { value: 6, label: t("{n} mo", { n: 6 }) },
+                        { value: 12, label: t("{n} mo", { n: 12 }) },
                       ]}
                     />
-                    <span className="text-[13px] text-graphite">By {shortDate(addMonths(today(), d.retestMonths))}</span>
+                    <span className="text-[13px] text-graphite">{t("By {date}", { date: shortDate(addMonths(today(), d.retestMonths)) })}</span>
                   </div>
                 </>
               )}
 
-              <h2 className={`mt-6 ${label}`}>Note to {patient.first}</h2>
-              <p className="text-[13px] text-graphite">She sees this under your name. Drafted from her drives. Change anything you'd say differently.</p>
+              <h2 className={`mt-6 ${label}`}>{t("Note to {name}", { name: first })}</h2>
+              <p className="text-[13px] text-graphite">{t("She sees this under your name. Drafted from her drives. Change anything you'd say differently.")}</p>
               {d.noteFor && d.noteFor !== d.outcome && (
-                <p className="mt-1 rounded-lg bg-signal-soft px-3 py-2 text-[13px] font-semibold text-signal-ink">Written for {outcomeCopy[d.noteFor].label}. Reread before signing.</p>
+                <p className="mt-1 rounded-lg bg-signal-soft px-3 py-2 text-[13px] font-semibold text-signal-ink">{t("Written for {outcome}. Reread before signing.", { outcome: t(outcomeCopy[d.noteFor].label) })}</p>
               )}
               <textarea value={d.note} onChange={(e) => update({ note: e.target.value, noteFor: d.outcome })} rows={5} className="mt-2 w-full resize-none rounded-xl border-2 border-line bg-canvas px-3.5 py-3 text-[15px] leading-snug outline-none focus:border-asphalt" />
 
-              <h2 className={`mt-5 ${label}`}>Reasoning for the record</h2>
+              <h2 className={`mt-5 ${label}`}>{t("Reasoning for the record")}</h2>
               <p className="text-[13px] text-graphite">
-                Goes to the record and {referringDoctor.name}, not to {patient.first}.{differs ? " Required: your decision differs from the suggestion." : ""}
+                {t("Goes to the record and {doctor}, not to {name}.", { doctor: t(referringDoctor.name), name: first })}
+                {differs ? t(" Required: your decision differs from the suggestion.") : ""}
               </p>
               <textarea value={d.reasoning} onChange={(e) => update({ reasoning: e.target.value })} rows={3} className={`mt-2 w-full resize-none rounded-xl border-2 bg-canvas px-3.5 py-3 text-[15px] leading-snug outline-none focus:border-asphalt ${differs && !d.reasoning.trim() ? "border-signal" : "border-line"}`} />
             </>
@@ -338,26 +347,37 @@ export function ReviewSign() {
         <div className="border-t border-line px-6 pt-4 pb-[calc(var(--safe-bottom,0px)+16px)]">
           {d.outcome && (
             <div className="mb-3 text-[14px] leading-snug">
-              <span className="text-graphite">{patient.first} will see: </span>
-              <span className="font-semibold">{outcomeCopy[d.outcome].title}</span>
+              <span className="text-graphite">{t("{name} will see: ", { name: first })}</span>
+              <span className="font-semibold">{t(outcomeCopy[d.outcome].title)}</span>
               <span className="text-graphite">
                 {" "}
-                Then your note,{d.outcome === "conditions" ? " her limits," : ""} next steps,{needsTalk ? " ride options," : ""} and DriverScore {result.total} with each drive's score and a plain reason.
+                {t(
+                  d.outcome === "conditions"
+                    ? needsTalk
+                      ? "Then your note, her limits, next steps, ride options, and DriverScore {score} with each drive's score and a plain reason."
+                      : "Then your note, her limits, next steps, and DriverScore {score} with each drive's score and a plain reason."
+                    : needsTalk
+                      ? "Then your note, next steps, ride options, and DriverScore {score} with each drive's score and a plain reason."
+                      : "Then your note, next steps, and DriverScore {score} with each drive's score and a plain reason.",
+                  { score: result.total },
+                )}
               </span>
             </div>
           )}
           {needsTalk && (
-            <button onClick={() => update({ discussed: !d.discussed })} role="checkbox" aria-checked={d.discussed} className="mb-3 flex items-start gap-3 rounded-xl bg-signal-soft px-4 py-3 text-left">
+            <button onClick={() => update({ discussed: !d.discussed })} role="checkbox" aria-checked={d.discussed} data-capture="discussed" className="mb-3 flex items-start gap-3 rounded-xl bg-signal-soft px-4 py-3 text-left">
               <span className={`mt-0.5 flex size-6 shrink-0 items-center justify-center rounded-md ${d.discussed ? "bg-asphalt text-white" : "border-2 border-asphalt/40 bg-white"}`}>{d.discussed && <Check size={16} strokeWidth={3} />}</span>
-              <span className="text-[14px] leading-snug">I talked with {patient.first} about this in person.</span>
+              <span className="text-[14px] leading-snug">{t("I talked with {name} about this in person.", { name: first })}</span>
             </button>
           )}
           <SignaturePad value={d.signature} onSigned={(v) => update({ signature: v })} />
           <div className="mt-1.5 text-[13px] text-graphite">
-            {specialist.name}, {specialist.credentials}
+            {t(specialist.name)}
+            {t(", ")}
+            {specialist.credentials}
           </div>
-          <Button className="mt-3 w-full" size="md" disabled={!canSign} onClick={sign}>
-            Sign and share with {patient.first}
+          <Button className="mt-3 w-full" size="md" disabled={!canSign} onClick={sign} data-capture="sign">
+            {t("Sign and share with {name}", { name: first })}
           </Button>
         </div>
       </aside>
@@ -368,10 +388,12 @@ export function ReviewSign() {
 export function Released() {
   const d = useDemo((s) => s.determination);
   const result = useScore();
+  const t = useT();
   if (!d || !d.outcome) return null;
   const signed = d.signedAt ? new Date(d.signedAt) : today();
+  const first = t(patient.first);
   return (
-    <Pane title="Signed and shared" sub={`${timeOf(signed)}, ${shortDate(signed)}`}>
+    <Pane title={t("Signed and shared")} sub={`${timeOf(signed)}${t(", ")}${shortDate(signed)}`}>
       <div className="grid grid-cols-[1.2fr_1fr] gap-5">
         <Card>
           <div className="flex items-center gap-5 px-6 py-6">
@@ -379,15 +401,15 @@ export function Released() {
               <Check size={30} strokeWidth={3} />
             </motion.span>
             <div>
-              <div className="font-display text-[26px] font-extrabold">{outcomeCopy[d.outcome].label}</div>
+              <div className="font-display text-[26px] font-extrabold">{t(outcomeCopy[d.outcome].label)}</div>
               <div className="text-[16px] text-graphite">
                 DriverScore {result.total}
-                {d.retestMonths > 0 ? `, re-test by ${shortDate(addMonths(signed, d.retestMonths))}` : ""}
+                {d.retestMonths > 0 ? t(", re-test by {date}", { date: shortDate(addMonths(signed, d.retestMonths)) }) : ""}
               </div>
             </div>
           </div>
           <div className="divide-y divide-line border-t border-line">
-            {[`On ${patient.first}'s phone`, "Saved to her HealthKey record", `Report sent to ${referringDoctor.name}`, "Not sent to the DMV"].map((x) => (
+            {[t("On {name}'s phone", { name: first }), t("Saved to her HealthKey record"), t("Report sent to {doctor}", { doctor: t(referringDoctor.name) }), t("Not sent to the DMV")].map((x) => (
               <div key={x} className="flex items-center gap-3 px-6 py-3.5 text-[16px]">
                 <Check size={18} strokeWidth={3} className="text-hk" />
                 {x}
@@ -395,11 +417,11 @@ export function Released() {
             ))}
           </div>
         </Card>
-        <Card title="Plan">
+        <Card title={t("Plan")}>
           <div className="divide-y divide-line pb-1">
             {[...d.conditions, ...d.plan].map((p) => (
               <div key={p} className="px-5 py-3 text-[16px]">
-                {p}
+                {t(p)}
               </div>
             ))}
           </div>

@@ -3,6 +3,7 @@ import { AnimatePresence, motion } from "motion/react";
 import { Suspense, lazy, useEffect, useState } from "react";
 import { patient } from "../data/demo";
 import { DRIVES, driveById } from "../data/drives";
+import { useT } from "../i18n/useT";
 import { prepareDrives } from "../sim/prepare";
 import { SCORE_AT, driveEvents, driveLength, driveSeconds, hardStopAt, segmentAt, useDriveClock } from "../sim/timeline";
 import { useDemo, useResults, useScore } from "../state/store";
@@ -16,13 +17,14 @@ export function DrivePrep() {
   const feeling = useDemo((s) => s.preDriveFeeling);
   const assigned = useDemo((s) => s.assigned);
   const go = useDemo((s) => s.go);
+  const t = useT();
   const concern = feeling && feeling !== "I feel fine";
   useEffect(() => prepareDrives(assigned), [assigned]);
   const minutes = DRIVES.filter((d) => assigned.includes(d.id)).reduce((a, d) => a + d.minutes, 0);
   return (
     <Pane
-      title="Simulator drives"
-      sub={`${assigned.length} drives assigned, about ${minutes} minutes on Simulator 1.`}
+      title={t("Simulator drives")}
+      sub={t("{n} drives assigned, about {m} minutes on Simulator 1.", { n: assigned.length, m: minutes })}
       actions={
         <Button
           size="md"
@@ -30,32 +32,32 @@ export function DrivePrep() {
           disabled={!feeling || !assigned.length}
           onClick={() => go("driving", { simStart: Date.now(), drivesCompleted: null, hardStopSeen: false, live: { ...useDemo.getState().live, reactionMs: undefined } })}
         >
-          Start simulator
+          {t("Start simulator")}
         </Button>
       }
     >
       <div className="grid grid-cols-[1fr_1fr] items-start gap-5">
-        <Card title="Before the drive">
+        <Card title={t("Before the drive")}>
           <div className="px-5 pt-2 pb-5">
             {feeling ? (
               <div className={`rounded-xl px-4 py-3.5 ${concern ? "bg-alert-tint" : "bg-canvas"}`}>
-                <div className="text-[14px] text-graphite">{patient.first} says</div>
-                <div className="text-[19px] font-semibold">{feeling}</div>
-                {concern && <div className="mt-1 text-[15px]">Check symptoms before starting. Stop the drive if they get worse.</div>}
+                <div className="text-[14px] text-graphite">{t("{name} says", { name: t(patient.first) })}</div>
+                <div className="text-[19px] font-semibold">{t(feeling)}</div>
+                {concern && <div className="mt-1 text-[15px]">{t("Check symptoms before starting. Stop the drive if they get worse.")}</div>}
               </div>
             ) : (
               <div className="flex items-center gap-3 rounded-xl bg-canvas px-4 py-3.5 text-[17px]">
                 <motion.span className="block size-4 rounded-full border-2 border-asphalt border-t-transparent" animate={{ rotate: 360 }} transition={{ duration: 0.8, repeat: Infinity, ease: "linear" }} />
-                Waiting for {patient.first} to answer on her phone
+                {t("Waiting for {name} to answer on her phone", { name: t(patient.first) })}
               </div>
             )}
           </div>
         </Card>
         <Card
-          title="Assigned drives"
+          title={t("Assigned drives")}
           aside={
             <button onClick={() => go("record-review")} className="text-[14px] font-semibold text-graphite hover:text-asphalt">
-              Change
+              {t("Change")}
             </button>
           }
         >
@@ -64,10 +66,10 @@ export function DrivePrep() {
               <li key={id} className="flex items-center gap-3 px-5 py-3">
                 <span className="w-5 font-display font-bold text-graphite">{i + 1}</span>
                 <span className="min-w-0 flex-1">
-                  <span className="block text-[16px] font-semibold">{driveById[id].name}</span>
-                  <span className="block text-[13px] text-graphite">{driveById[id].measures}</span>
+                  <span className="block text-[16px] font-semibold">{t(driveById[id].name)}</span>
+                  <span className="block text-[13px] text-graphite">{t(driveById[id].measures)}</span>
                 </span>
-                <span className="text-[13px] text-graphite">{driveById[id].minutes} min</span>
+                <span className="text-[13px] text-graphite">{t("{m} min", { m: driveById[id].minutes })}</span>
               </li>
             ))}
           </ol>
@@ -87,6 +89,7 @@ export function LiveDrive() {
   const go = useDemo((s) => s.go);
   const raw = useResults();
   const result = useScore();
+  const tt = useT();
   const length = driveLength(assigned.length);
   const t = useDriveClock(simStart, speed, length, 10);
   const seg = segmentAt(t, assigned);
@@ -121,20 +124,20 @@ export function LiveDrive() {
 
   return (
     <Pane
-      title="Simulator drives"
+      title={tt("Simulator drives")}
       sub={
         <span className="flex items-center gap-2">
           <span className="relative flex size-2.5">
             <motion.span className="absolute inset-0 rounded-full bg-alert" animate={{ opacity: [1, 0.25, 1] }} transition={{ duration: 1.4, repeat: Infinity }} />
           </span>
-          Live from Simulator 1
+          {tt("Live from Simulator 1")}
         </span>
       }
       actions={
         <>
           <span className="font-display text-[24px] font-bold tnum">{`${mins}:${String(secs).padStart(2, "0")}`}</span>
           <Button size="md" variant={confirmStop ? "primary" : "secondary"} onClick={stopDrive} className={confirmStop ? "!bg-alert" : ""}>
-            {confirmStop ? "Tap again to stop" : "Stop drive"}
+            {confirmStop ? tt("Tap again to stop") : tt("Stop drive")}
           </Button>
         </>
       }
@@ -152,7 +155,7 @@ export function LiveDrive() {
         </Suspense>
       </div>
       <div className="mt-4 grid grid-cols-[1fr_1fr] gap-5">
-        <Card title="Drives">
+        <Card title={tt("Drives")}>
           <ol className="divide-y divide-line pb-1">
             {assigned.map((id, i) => {
               const done = i < seg.index || t >= length;
@@ -161,14 +164,14 @@ export function LiveDrive() {
                 <li key={id} className={`flex items-center justify-between px-5 py-[7px] ${now ? "bg-signal-soft" : ""}`}>
                   <span className={`flex items-center gap-3 text-[16px] ${now ? "font-semibold" : done ? "" : "text-graphite"}`}>
                     <span className={`flex size-6 items-center justify-center rounded-full text-[12px] font-bold ${done ? "bg-asphalt text-white" : now ? "bg-signal" : "bg-mist"}`}>{done ? <Check size={14} strokeWidth={3} /> : i + 1}</span>
-                    {driveById[id].name}
+                    {tt(driveById[id].name)}
                   </span>
                 </li>
               );
             })}
           </ol>
         </Card>
-        <Card title="Results as they come in">
+        <Card title={tt("Results as they come in")}>
           <div className="no-scrollbar flex max-h-[210px] flex-col-reverse overflow-y-auto pb-1">
             <AnimatePresence initial={false}>
               {[...events].reverse().map((e) => (
@@ -178,7 +181,7 @@ export function LiveDrive() {
                 </motion.div>
               ))}
             </AnimatePresence>
-            {events.length === 0 && <div className="px-5 py-3 text-[15px] text-graphite">Each drive's score appears here when it finishes.</div>}
+            {events.length === 0 && <div className="px-5 py-3 text-[15px] text-graphite">{tt("Each drive's score appears here when it finishes.")}</div>}
           </div>
         </Card>
       </div>
@@ -191,14 +194,15 @@ export function DriveDone() {
   const postFeel = useDemo((s) => s.postFeel);
   const selfRating = useDemo((s) => s.selfRating);
   const result = useScore();
+  const t = useT();
   return (
     <Pane
-      title={result.incomplete ? "Drive stopped" : "Drives complete"}
-      sub="Each score comes with what was measured and why."
-      actions={<Button size="md" onClick={() => go("uploading")}>Continue to review</Button>}
+      title={result.incomplete ? t("Drive stopped") : t("Drives complete")}
+      sub={t("Each score comes with what was measured and why.")}
+      actions={<Button size="md" onClick={() => go("uploading")}>{t("Continue to review")}</Button>}
     >
       <div className="grid grid-cols-[1.45fr_1fr] items-start gap-5">
-        <Card title="Scores" aside={<span className="font-display text-[15px] font-bold tnum">DriverScore {result.total}</span>}>
+        <Card title={t("Scores")} aside={<span className="font-display text-[15px] font-bold tnum">DriverScore {result.total}</span>}>
           <div className="divide-y divide-line pb-1">
             {result.drives.map((d) => (
               <div key={d.id} className="px-5 py-3">
@@ -206,10 +210,10 @@ export function DriveDone() {
                   <span className="text-[16px] font-semibold">{d.name}</span>
                   {d.done ? (
                     <span className={`font-display text-[16px] font-bold tnum ${d.hardStop ? "text-alert" : ""}`}>
-                      {d.points} <span className="font-normal text-graphite">of 10</span>
+                      {d.points} <span className="font-normal text-graphite">{t("of 10")}</span>
                     </span>
                   ) : (
-                    <span className="text-[15px] text-graphite">Not completed</span>
+                    <span className="text-[15px] text-graphite">{t("Not completed")}</span>
                   )}
                 </div>
                 {d.done && <div className="mt-0.5 text-[14px] leading-snug">{d.reason}</div>}
@@ -217,15 +221,15 @@ export function DriveDone() {
             ))}
           </div>
         </Card>
-        <Card title={`${patient.first} after the drive`}>
+        <Card title={t("{name} after the drive", { name: t(patient.first) })}>
           <div className="px-5 pt-1 pb-5">
             {postFeel ? (
               <>
-                <div className="text-[19px] font-semibold">{postFeel}</div>
-                <div className="mt-1 text-[16px] text-graphite">{selfRating ? `Rates her drive ${selfRating} of 5` : "Rating her drive now"}</div>
+                <div className="text-[19px] font-semibold">{t(postFeel)}</div>
+                <div className="mt-1 text-[16px] text-graphite">{selfRating ? t("Rates her drive {n} of 5", { n: selfRating }) : t("Rating her drive now")}</div>
               </>
             ) : (
-              <div className="text-[16px] text-graphite">Answering on her phone</div>
+              <div className="text-[16px] text-graphite">{t("Answering on her phone")}</div>
             )}
           </div>
         </Card>
@@ -244,6 +248,7 @@ const uploads = [
 export function Upload() {
   const startReview = useDemo((s) => s.startReview);
   const speed = useDemo((s) => s.speed);
+  const t = useT();
   const [n, setN] = useState(0);
   useEffect(() => {
     const timers = uploads.map((_, i) => setTimeout(() => setN(i + 1), (350 + i * 420) / speed));
@@ -254,7 +259,14 @@ export function Upload() {
     };
   }, [speed, startReview]);
   return (
-    <Pane title={`Saving results to ${patient.first}'s record`} sub={<span className="flex items-center gap-2">Each result keeps its source and time. Your decision is added when you sign. <HealthKeyLogo height={18} /></span>}>
+    <Pane
+      title={t("Saving results to {name}'s record", { name: t(patient.first) })}
+      sub={
+        <span className="flex items-center gap-2">
+          {t("Each result keeps its source and time. Your decision is added when you sign.")} <HealthKeyLogo height={18} />
+        </span>
+      }
+    >
       <Card>
         <div className="divide-y divide-line">
           {uploads.map((u, i) => (
@@ -267,8 +279,8 @@ export function Upload() {
                 ) : null}
               </span>
               <div className="flex-1">
-                <div className="text-[18px] font-semibold">{u.label}</div>
-                <div className="text-[15px] text-graphite">{u.detail}</div>
+                <div className="text-[18px] font-semibold">{t(u.label)}</div>
+                <div className="text-[15px] text-graphite">{t(u.detail)}</div>
               </div>
             </div>
           ))}

@@ -1,6 +1,7 @@
 import { ChevronLeft, Volume2, VolumeX } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
+import { useT } from "../i18n/useT";
 import { speak, stopSpeaking } from "../lib/speech";
 import { atLeast, useDemo, type Phase, type PatientStep } from "../state/store";
 import { RoadProgress } from "../ui/Road";
@@ -77,6 +78,7 @@ export function PatientApp() {
   const patientStep = useDemo((s) => s.patientStep);
   const textScale = useDemo((s) => s.textScale);
   const set = useDemo((s) => s.set);
+  const t = useT();
   const [speaking, setSpeaking] = useState(false);
   const speechText = useRef("");
   const setSpeech = useCallback((t: string) => {
@@ -107,7 +109,7 @@ export function PatientApp() {
           <header className="relative z-10 flex items-center gap-3 bg-canvas px-4 pt-[calc(var(--safe-top,0px)+6px)] pb-2">
             <div className="w-12 shrink-0">
               {view.back && (
-                <button onClick={view.back} aria-label="Back" className="-ml-1 flex size-12 items-center justify-center rounded-full hover:bg-mist">
+                <button onClick={view.back} aria-label={t("Back")} className="-ml-1 flex size-12 items-center justify-center rounded-full hover:bg-mist">
                   <ChevronLeft size={30} strokeWidth={2.4} />
                 </button>
               )}
@@ -115,23 +117,23 @@ export function PatientApp() {
             <div className="min-w-0 flex-1">
               {view.progress && (
                 <>
-                  <RoadProgress steps={STEPS} current={progressIndex(phase, patientStep)} />
+                  <RoadProgress steps={STEPS.map((x) => t(x))} current={progressIndex(phase, patientStep)} />
                   <div className="-mt-0.5 text-[13px] font-semibold text-graphite">
-                    Step {progressIndex(phase, patientStep) + 1} of {STEPS.length}: {STEPS[progressIndex(phase, patientStep)]}
+                    {t("Step {n} of {total}: {name}", { n: progressIndex(phase, patientStep) + 1, total: STEPS.length, name: t(STEPS[progressIndex(phase, patientStep)]) })}
                   </div>
                 </>
               )}
             </div>
             <div className="flex shrink-0 items-center gap-1">
-              <button onClick={cycleText} aria-label={`Text size ${Math.round(textScale * 100)} percent`} className="flex h-[60px] w-[74px] flex-col items-center justify-center gap-0.5 rounded-xl hover:bg-mist">
+              <button onClick={cycleText} aria-label={t("Text size {n} percent", { n: Math.round(textScale * 100) })} className="flex h-[60px] w-[74px] flex-col items-center justify-center gap-0.5 rounded-xl hover:bg-mist">
                 <span className="font-display font-bold leading-none" style={{ fontSize: 18 + (textScale - 1) * 20 }}>
                   Aa
                 </span>
-                <span className="text-[15px] leading-tight font-semibold text-graphite">Text size</span>
+                <span className="text-[15px] leading-tight font-semibold text-graphite">{t("Text size")}</span>
               </button>
-              <button onClick={toggleSpeech} aria-label={speaking ? "Stop reading" : "Read aloud"} aria-pressed={speaking} className={`flex h-[60px] w-[62px] flex-col items-center justify-center gap-0.5 rounded-xl ${speaking ? "bg-asphalt text-white" : "hover:bg-mist"}`}>
+              <button onClick={toggleSpeech} aria-label={speaking ? t("Stop reading") : t("Read aloud")} aria-pressed={speaking} className={`flex h-[60px] w-[62px] flex-col items-center justify-center gap-0.5 rounded-xl ${speaking ? "bg-asphalt text-white" : "hover:bg-mist"}`}>
                 {speaking ? <VolumeX size={22} /> : <Volume2 size={22} />}
-                <span className={`text-[15px] leading-tight font-semibold ${speaking ? "text-white" : "text-graphite"}`}>{speaking ? "Stop" : "Listen"}</span>
+                <span className={`text-[15px] leading-tight font-semibold ${speaking ? "text-white" : "text-graphite"}`}>{speaking ? t("Stop") : t("Listen")}</span>
               </button>
             </div>
           </header>

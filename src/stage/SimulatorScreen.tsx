@@ -1,4 +1,5 @@
 import { Suspense, lazy, useEffect } from "react";
+import { useT } from "../i18n/useT";
 import { prepareDrives } from "../sim/prepare";
 import { driveLength, driveSeconds, useDriveClock } from "../sim/timeline";
 import { useDemo, useResults } from "../state/store";
@@ -20,6 +21,7 @@ export function SimulatorScreen() {
   const go = useDemo((s) => s.go);
   const t = useDriveClock(simStart, speed, length, 4);
   const isLive = scenario === "live";
+  const tt = useT();
   // Build the assigned drives' scenes while the simulator waits, so the first frame is ready.
   useEffect(() => (phase === "pre-drive" ? prepareDrives(assigned) : undefined), [phase, assigned]);
 
@@ -33,8 +35,8 @@ export function SimulatorScreen() {
       <div className="dark-surface flex h-full flex-col items-center justify-center gap-8 bg-asphalt text-white">
         <SteeringWheel size={140} light />
         <div className="text-center">
-          <div className="font-display text-[34px] font-extrabold">Simulator 1</div>
-          <div className="mt-1 text-[18px] text-white/60">Waiting for the specialist to start</div>
+          <div className="font-display text-[34px] font-extrabold">{tt("Simulator 1")}</div>
+          <div className="mt-1 text-[18px] text-white/60">{tt("Waiting for the specialist to start")}</div>
         </div>
         <div className="absolute bottom-8 left-8">
           <DriverScoreWordmark size={26} light />

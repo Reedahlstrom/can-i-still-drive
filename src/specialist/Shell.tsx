@@ -1,6 +1,7 @@
 import { Check } from "lucide-react";
 import type { ReactNode } from "react";
 import { patient, specialist, visit } from "../data/demo";
+import { useT } from "../i18n/useT";
 import { atLeast, useDemo, type Phase } from "../state/store";
 import { Avatar, DriverScoreMark } from "../ui/Brand";
 
@@ -13,6 +14,7 @@ const steps: { label: string; from: Phase; done: Phase }[] = [
 export function Rail() {
   const phase = useDemo((s) => s.phase);
   const go = useDemo((s) => s.go);
+  const t = useT();
   const reopen: Partial<Record<string, () => void>> = {
     "Review and assign": () => go("record-review"),
     // Evidence from the last drive stays until a new drive actually starts.
@@ -25,10 +27,10 @@ export function Rail() {
       <div className="flex items-center gap-3">
         <DriverScoreMark size={34} />
         <div>
-          <div className="text-[17px] font-semibold leading-tight">Simulator 1</div>
+          <div className="text-[17px] font-semibold leading-tight">{t("Simulator 1")}</div>
           <div className="flex items-center gap-2 text-[14px] text-white/60">
             <span className={`size-2 rounded-full ${simBusy ? "bg-signal" : "bg-[#5FBF85]"}`} />
-            {simBusy ? "In session" : "Ready"}, Room 204
+            {simBusy ? t("In session, Room 204") : t("Ready, Room 204")}
           </div>
         </div>
       </div>
@@ -38,12 +40,8 @@ export function Rail() {
           <div className="mt-10 flex items-center gap-3">
             <Avatar initials={patient.initials} size={46} tone="signal" />
             <div>
-              <div className="text-[18px] font-semibold leading-tight">
-                {patient.first} {patient.last}
-              </div>
-              <div className="text-[14px] text-white/60">
-                {patient.age}, {visit.time}
-              </div>
+              <div className="text-[18px] font-semibold leading-tight">{t(`${patient.first} ${patient.last}`)}</div>
+              <div className="text-[14px] text-white/60">{t("{age}, {time}", { age: patient.age, time: t(visit.time) })}</div>
             </div>
           </div>
           <ol className="mt-8 flex flex-col gap-1">
@@ -65,7 +63,7 @@ export function Rail() {
                   >
                     {done ? <Check size={16} strokeWidth={3} /> : i + 1}
                   </span>
-                  <span className={`text-[16px] ${now ? "font-semibold" : done ? "text-white/70" : "text-white/55"}`}>{s.label}</span>
+                  <span className={`text-[16px] ${now ? "font-semibold" : done ? "text-white/70" : "text-white/55"}`}>{t(s.label)}</span>
                   </button>
                 </li>
               );
@@ -73,13 +71,13 @@ export function Rail() {
           </ol>
         </>
       ) : (
-        <div className="mt-10 text-[15px] leading-relaxed text-white/55">No patient in session.</div>
+        <div className="mt-10 text-[15px] leading-relaxed text-white/55">{t("No patient in session.")}</div>
       )}
 
       <div className="mt-auto flex items-center gap-3 border-t border-white/10 pt-5">
         <Avatar initials={specialist.initials} size={38} tone="mist" />
         <div>
-          <div className="text-[15px] font-semibold leading-tight">{specialist.name}</div>
+          <div className="text-[15px] font-semibold leading-tight">{t(specialist.name)}</div>
           <div className="text-[13px] text-white/55">{specialist.credentials}</div>
         </div>
       </div>
@@ -102,9 +100,9 @@ export function Pane({ title, sub, actions, children }: { title: string; sub?: R
   );
 }
 
-export function Card({ title, children, className = "", aside }: { title?: string; children: ReactNode; className?: string; aside?: ReactNode }) {
+export function Card({ title, children, className = "", aside, capture }: { title?: string; children: ReactNode; className?: string; aside?: ReactNode; capture?: string }) {
   return (
-    <section className={`rounded-2xl bg-paper ${className}`}>
+    <section className={`rounded-2xl bg-paper ${className}`} data-capture={capture}>
       {title && (
         <div className="flex items-center justify-between px-5 pt-4 pb-1">
           <h2 className="text-[15px] font-semibold text-graphite">{title}</h2>

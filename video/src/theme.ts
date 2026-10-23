@@ -15,5 +15,5 @@ export const C = {
 export const FPS = 30;
 export const W = 1920;
 export const H = 1080;
-export const display = '"Overpass Variable", "Atkinson Hyperlegible Next Variable", sans-serif';
-export const body = '"Atkinson Hyperlegible Next Variable", sans-serif';
+export const display = '"Overpass Variable", "Atkinson Hyperlegible Next Variable", "Noto Sans JP Variable", sans-serif';
+export const body = '"Atkinson Hyperlegible Next Variable", "Noto Sans JP Variable", sans-serif';
