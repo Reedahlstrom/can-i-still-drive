@@ -40,5 +40,5 @@ export function Lead({ children, className = "" }: { children: ReactNode; classN
 }
 
 export function Meta({ children, className = "" }: { children: ReactNode; className?: string }) {
-  return <p className={`text-[16px] font-semibold text-graphite ${className}`}>{children}</p>;
+  return <p className={`text-[17px] font-semibold text-graphite ${className}`}>{children}</p>;
 }

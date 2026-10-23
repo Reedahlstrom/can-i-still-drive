@@ -4,7 +4,8 @@ import { useEffect, useState, type CSSProperties, type ReactNode } from "react";
 import { scenarioLabels, type ScenarioKey } from "../data/scenarios";
 import { PatientApp } from "../patient/PatientApp";
 import { SpecialistApp } from "../specialist/SpecialistApp";
-import { jumpLabels, useDemo, type JumpStage } from "../state/store";
+import { driveSeconds } from "../sim/timeline";
+import { blankDetermination, jumpLabels, useDemo, type JumpStage } from "../state/store";
 import { DriverScoreWordmark } from "../ui/Brand";
 import { Segmented } from "../ui/primitives";
 
@@ -111,6 +112,19 @@ function Presenter({ onClose }: { onClose: () => void }) {
   const jump = useDemo((s) => s.jump);
   const reset = useDemo((s) => s.reset);
   const open = (hash: string) => window.open(`${location.pathname}#/${hash}`, `driverscore-${hash}`);
+  const pickScenario = (k: ScenarioKey) => {
+    const s = useDemo.getState();
+    set({ scenario: k, handsOn: {} });
+    if (s.phase === "released") jump("results");
+    else if (s.phase === "review") set({ determination: { ...blankDetermination } });
+  };
+  const changeSpeed = (v: 1 | 2) => {
+    const s = useDemo.getState();
+    if (s.phase === "driving" && s.simStart) {
+      const elapsed = driveSeconds(s.simStart, s.speed);
+      set({ speed: v, simStart: Date.now() - (elapsed * 1000) / v });
+    } else set({ speed: v });
+  };
   return (
     <motion.div
       initial={{ opacity: 0, y: 12, scale: 0.98 }}
@@ -128,7 +142,7 @@ function Presenter({ onClose }: { onClose: () => void }) {
       <h3 className="mt-4 mb-2 text-[14px] font-semibold text-graphite">Result</h3>
       <div className="grid grid-cols-2 gap-1.5">
         {(Object.keys(scenarioLabels) as ScenarioKey[]).map((k) => (
-          <button key={k} onClick={() => set({ scenario: k, handsOn: {} })} aria-pressed={scenario === k} className={`h-10 rounded-xl px-3 text-left text-[15px] font-semibold ${scenario === k ? "bg-asphalt text-white" : "bg-mist hover:bg-line"}`}>
+          <button key={k} onClick={() => pickScenario(k)} aria-pressed={scenario === k} className={`h-10 rounded-xl px-3 text-left text-[15px] font-semibold ${scenario === k ? "bg-asphalt text-white" : "bg-mist hover:bg-line"}`}>
             {scenarioLabels[k]}
           </button>
         ))}
@@ -148,7 +162,7 @@ function Presenter({ onClose }: { onClose: () => void }) {
           label="Speed"
           size="sm"
           value={speed}
-          onChange={(v) => set({ speed: v })}
+          onChange={changeSpeed}
           options={[
             { value: 1, label: "1×" },
             { value: 2, label: "2×" },

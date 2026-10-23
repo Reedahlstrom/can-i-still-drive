@@ -1,8 +1,8 @@
 import { Minus, Plus } from "lucide-react";
 import { patient } from "../data/demo";
 import { sampleClock } from "../data/scenarios";
-import { acuityScale, type Acuity, type Raw } from "../lib/score";
-import { rawFor, useDemo, useScore } from "../state/store";
+import { acuityScale, fieldOptions, type Acuity, type Raw } from "../lib/score";
+import { useDemo, useRaw, useScore } from "../state/store";
 import { Button, Segmented } from "../ui/primitives";
 import { Card, Pane } from "./Shell";
 
@@ -37,7 +37,8 @@ export function HandsOn() {
   const handsOn = useDemo((s) => s.handsOn);
   const set = useDemo((s) => s.set);
   const go = useDemo((s) => s.go);
-  const raw = rawFor({ scenario, live, handsOn });
+  const raw = useRaw();
+  const isLive = scenario === "live";
   const result = useScore();
   const dom = Object.fromEntries(result.domains.map((d) => [d.id, d]));
   const put = <K extends keyof Raw>(k: K, v: Raw[K]) => set({ handsOn: { ...handsOn, [k]: v } });
@@ -72,20 +73,17 @@ export function HandsOn() {
               <ItemRow label="Pursuits" hint="Smooth tracking">
                 <Segmented size="sm" label="Pursuits" value={raw.pursuits} onChange={(v) => put("pursuits", v)} options={pts(4)} />
               </ItemRow>
-              <ItemRow label="Visual fields" hint="Quadrants missed">
+              <ItemRow stack label={`Worse eye ${raw.worseEye}`} hint="Best corrected">
                 <Segmented
                   size="sm"
-                  label="Fields"
-                  value={raw.fields}
-                  onChange={(v) => put("fields", v)}
-                  options={[
-                    { value: 7, label: "None" },
-                    { value: 5, label: "1" },
-                    { value: 3, label: "2+" },
-                    { value: 1, label: "Both" },
-                    { value: 0, label: "Half" },
-                  ]}
+                  label="Worse eye"
+                  value={raw.worseEye}
+                  onChange={(v) => put("worseEye", v as Acuity)}
+                  options={acuityScale.filter((a) => a !== "20/80").map((a) => ({ value: a, label: a.slice(3) }))}
                 />
+              </ItemRow>
+              <ItemRow stack label="Visual fields" hint="Confrontation, each eye">
+                <Segmented size="sm" label="Fields" value={raw.fields} onChange={(v) => put("fields", v)} options={fieldOptions.map((f) => ({ value: f.value, label: f.label }))} />
               </ItemRow>
             </div>
           </Card>
@@ -125,7 +123,11 @@ export function HandsOn() {
               </ItemRow>
               <div className="flex items-center gap-4 px-5 py-3.5">
                 <div className="size-[88px] shrink-0 overflow-hidden rounded-xl border border-line bg-white">
-                  <img src={live.clock ?? sampleClock} alt="Clock drawing" className="h-full w-full object-contain" />
+                  {live.clock || !isLive ? (
+                    <img src={live.clock ?? sampleClock} alt="Clock drawing" className="h-full w-full object-contain" />
+                  ) : (
+                    <div className="flex h-full items-center justify-center px-2 text-center text-[12px] text-graphite">Not completed</div>
+                  )}
                 </div>
                 <div className="min-w-0 flex-1">
                   <div className="text-[16px] font-semibold">Clock drawing</div>
@@ -138,12 +140,12 @@ export function HandsOn() {
           <Card title="From the tablet">
             <div className="divide-y divide-line pb-1">
               <Readout
-                label={raw.trailsShort ? "Trails B (short form)" : "Trails B"}
-                value={raw.trailsSeconds === null ? "Not finished" : `${raw.trailsSeconds} s${live.trailsErrors !== undefined && scenario === "live" ? `, ${live.trailsErrors} errors` : ""}`}
+                label={raw.trailsShort ? "Trails, 10-circle tablet form" : "Trails B"}
+                value={isLive && live.trailsSeconds === undefined ? "Not completed" : raw.trailsSeconds === null ? "Not finished" : `${raw.trailsSeconds} s${raw.trailsErrors !== undefined ? `, ${raw.trailsErrors} ${raw.trailsErrors === 1 ? "error" : "errors"}` : ""}`}
               />
-              <Readout label="Signs" value={`${raw.signs} of 5`} />
-              <Readout label="Colors" value={`${raw.colors} of 6`} />
-              <Readout label="Driving questions" value={`${raw.choice} of 3`} />
+              <Readout label="Signs" value={isLive && live.signs === undefined ? "Not completed" : `${raw.signs} of 5`} />
+              <Readout label="Colors" value={isLive && live.colors === undefined ? "Not completed" : `${raw.colors} of 6`} />
+              <Readout label="Driving questions" value={isLive && live.choice === undefined ? "Not completed" : `${raw.choice} of 3`} />
             </div>
           </Card>
         </div>

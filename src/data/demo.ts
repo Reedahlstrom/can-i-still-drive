@@ -14,6 +14,7 @@ export const specialist = {
   first: "Dana",
   credentials: "OTR/L, CDRS",
   role: "Driving specialist",
+  plain: "certified driving specialist",
   initials: "DR",
 };
 
@@ -27,13 +28,17 @@ export const family = {
   first: "Sarah",
   relation: "Daughter",
   initials: "SE",
+  phone: "(801) 555-0187",
 };
+
+export const home = { label: "Home", address: "1450 E Maple St" };
 
 export const visit = {
   time: "10:30 AM",
   place: "Lakeview Medical Center",
   unit: "Rehabilitation, 2nd floor",
   reason: "Family concern about driving",
+  length: "About 2 hours",
 };
 
 export type Location = {
@@ -128,9 +133,8 @@ export const questions: Question[] = [
     id: "places",
     prompt: "Where do you need to go?",
     multi: true,
-    options: ["Doctor visits", "Grocery store", "Church", "Family", "Friends", "Volunteering"],
+    options: ["Doctor visits", "Grocery store", "Church", "Family", "Friends", "Hardware store"],
   },
-  { id: "concern", prompt: "Has anyone told you they're worried about your driving?", options: ["No", "Yes", "I'd rather talk about it"] },
 ];
 
 export const defaultAnswers: Record<string, string | string[]> = {
@@ -138,7 +142,6 @@ export const defaultAnswers: Record<string, string | string[]> = {
   avoid: ["Driving at night", "Highways"],
   incidents: "A close call",
   places: ["Doctor visits", "Grocery store", "Church", "Family"],
-  concern: "Yes",
 };
 
 export const destinations: Record<string, { name: string; address: string; mins: number }> = {
@@ -147,5 +150,5 @@ export const destinations: Record<string, { name: string; address: string; mins:
   Church: { name: "First Community Church", address: "455 E 2700 S", mins: 6 },
   Family: { name: "Sarah's house", address: "2187 Kensington Ave", mins: 15 },
   Friends: { name: "Evergreen Senior Center", address: "3100 S 500 E", mins: 9 },
-  Volunteering: { name: "City Library", address: "210 E 400 S", mins: 14 },
+  "Hardware store": { name: "Cottonwood Hardware", address: "4120 S Highland Dr", mins: 11 },
 };

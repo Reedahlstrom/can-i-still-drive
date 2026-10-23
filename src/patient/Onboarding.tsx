@@ -1,6 +1,5 @@
 import { useAnimationFrame, useReducedMotion, motion } from "motion/react";
 import { useEffect, useRef, useState } from "react";
-import { patient } from "../data/demo";
 import { useDemo } from "../state/store";
 import { DriverScoreWordmark } from "../ui/Brand";
 import { Button } from "../ui/primitives";
@@ -48,7 +47,7 @@ function DrivingRoad() {
 
 export function Welcome() {
   const set = useDemo((s) => s.set);
-  useReadAloud("Can I still drive? A simulator drive and a few short tests at your doctor's office. A driving specialist goes over the results with you.");
+  useReadAloud("Can I still drive? A few short tests and a simulator drive with a driving specialist. You'll leave with a result and a plan, shared only with you and your doctor.");
   return (
     <div className="relative flex h-full flex-col overflow-hidden bg-asphalt text-white">
       <div className="absolute inset-x-0 top-[17%] bottom-0">
@@ -61,7 +60,7 @@ export function Welcome() {
       <div className="relative mt-auto px-6 pb-[calc(var(--safe-bottom,0px)+18px)]">
         <h1 className="font-display text-[46px] leading-[1.02] font-extrabold tracking-[-0.02em]">Can I still drive?</h1>
         <p className="mt-4 text-[20px] leading-[1.45] text-white/75">
-          A simulator drive and a few short tests at your doctor's office. A driving specialist goes over the results with you.
+          A few short tests and a simulator drive with a driving specialist. You'll leave with a result and a plan, shared only with you and your doctor.
         </p>
         <Button variant="signal" className="mt-8 w-full" onClick={() => set({ patientStep: "details" })}>
           Get started
@@ -71,14 +70,13 @@ export function Welcome() {
   );
 }
 
-function Field({ label, value }: { label: string; value: string }) {
-  const [v, setV] = useState(value);
+function Field({ label, value, onChange }: { label: string; value: string; onChange: (v: string) => void }) {
   return (
     <label className="block">
       <span className="mb-2 block text-[17px] font-semibold text-graphite">{label}</span>
       <input
-        value={v}
-        onChange={(e) => setV(e.target.value)}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
         className="h-[62px] w-full rounded-2xl border-2 border-transparent bg-paper px-5 text-[21px] text-asphalt outline-none transition-colors focus:border-asphalt"
       />
     </label>
@@ -87,6 +85,7 @@ function Field({ label, value }: { label: string; value: string }) {
 
 export function Details() {
   const set = useDemo((s) => s.set);
+  const account = useDemo((s) => s.account);
   return (
     <Screen
       speech="Confirm your details. Dr. Patel's office sent your invitation. Check that everything is right."
@@ -95,9 +94,9 @@ export function Details() {
       <Title>Confirm your details</Title>
       <Lead>Dr. Patel's office sent your invitation. Check that everything is right.</Lead>
       <div className="mt-7 flex flex-col gap-5">
-        <Field label="Name" value={`${patient.first} ${patient.last}`} />
-        <Field label="Date of birth" value={patient.dob} />
-        <Field label="Mobile number" value={patient.phone} />
+        <Field label="Name" value={account.name} onChange={(v) => set({ account: { ...account, name: v } })} />
+        <Field label="Date of birth" value={account.dob} onChange={(v) => set({ account: { ...account, dob: v } })} />
+        <Field label="Mobile number" value={account.phone} onChange={(v) => set({ account: { ...account, phone: v } })} />
       </div>
     </Screen>
   );
@@ -107,21 +106,22 @@ const CODE = "482916";
 
 export function Code() {
   const set = useDemo((s) => s.set);
+  const phone = useDemo((s) => s.account.phone);
   const speed = useDemo((s) => s.speed);
   const [n, setN] = useState(0);
   useEffect(() => {
     const t = (ms: number) => ms / speed;
     const timers = Array.from({ length: 6 }, (_, i) => setTimeout(() => setN(i + 1), t(700 + i * 140)));
-    const done = setTimeout(() => set({ patientStep: "hk-intro" }), t(700 + 6 * 140 + 650));
+    const done = setTimeout(() => useDemo.getState().patientStep === "code" && set({ patientStep: "hk-intro" }), t(700 + 6 * 140 + 650));
     return () => {
       timers.forEach(clearTimeout);
       clearTimeout(done);
     };
   }, [set, speed]);
   return (
-    <Screen speech={`Enter the code. We texted a 6-digit code to ${patient.phone}.`}>
+    <Screen speech={`Enter the code. We texted a 6-digit code to ${phone}.`}>
       <Title>Enter the code</Title>
-      <Lead>We texted a 6-digit code to {patient.phone}.</Lead>
+      <Lead>We texted a 6-digit code to {phone}.</Lead>
       <div className="mt-8 flex justify-between gap-2" aria-label="Verification code">
         {CODE.split("").map((c, i) => (
           <div

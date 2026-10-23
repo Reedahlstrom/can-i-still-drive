@@ -10,9 +10,9 @@ import { Questions } from "./Questions";
 import { Result, RideSheet } from "./Result";
 import { SpeechContext } from "./Screen";
 import { FamilyTab, RecordTab, TabBar } from "./Tabs";
-import { Connecting, Driving, Home, PostDrive, PreDrive, VisitStatus, Where, WhichSim } from "./Visit";
+import { Connecting, Driving, Home, PostDrive, PreDrive, VisitStatus, Where } from "./Visit";
 
-const STEPS = ["Account", "Health record", "Questions", "Check in", "Tests", "Drive", "Results"];
+const STEPS = ["Your details", "Health record", "Questions", "Check in"];
 
 function progressIndex(phase: Phase, step: PatientStep) {
   if (phase === "onboarding") {
@@ -20,10 +20,7 @@ function progressIndex(phase: Phase, step: PatientStep) {
     if (step.startsWith("hk")) return 1;
     return 0;
   }
-  if (phase === "ready") return 3;
-  if (atLeast(phase, "uploading")) return 6;
-  if (atLeast(phase, "pre-drive")) return 5;
-  return 4;
+  return 3;
 }
 
 type View = { key: string; node: ReactNode; tabs: boolean; back?: () => void; progress: boolean; chrome: boolean };
@@ -58,20 +55,19 @@ function useView(): View {
 
   if (phase === "ready") {
     if (patientStep === "where") return { key: "where", node: <Where />, tabs: false, progress: true, chrome: true, back: () => set({ patientStep: "home" }) };
-    if (patientStep === "which-sim") return { key: "which-sim", node: <WhichSim />, tabs: false, progress: true, chrome: true, back: () => set({ patientStep: "where" }) };
     if (patientStep === "connecting") return { key: "connecting", node: <Connecting />, tabs: false, progress: true, chrome: true };
   }
 
-  if (phase === "pre-drive" && !s.preDriveFeeling) return { key: "pre-drive", node: <PreDrive />, tabs: false, progress: true, chrome: true };
+  if (phase === "pre-drive" && !s.preDriveFeeling) return { key: "pre-drive", node: <PreDrive />, tabs: false, progress: false, chrome: true };
   if (phase === "driving") return { key: "driving", node: <Driving />, tabs: false, progress: false, chrome: false };
   if (atLeast(phase, "post-drive") && phase !== "released" && (!s.postFeel || s.selfRating === null))
-    return { key: `post-${s.postFeel ? 2 : 1}`, node: <PostDrive />, tabs: false, progress: true, chrome: true };
+    return { key: `post-${s.postFeel ? 2 : 1}`, node: <PostDrive />, tabs: false, progress: false, chrome: true };
 
   if (tab === "record") return { key: "record", node: <RecordTab />, tabs: true, progress: false, chrome: true };
   if (tab === "family") return { key: "family", node: <FamilyTab />, tabs: true, progress: false, chrome: true };
-  if (phase === "ready") return { key: "home", node: <Home />, tabs: true, progress: true, chrome: true };
-  if (phase === "released") return { key: `result-${s.determination?.outcome}-${s.determination?.signedAt}`, node: <Result />, tabs: true, progress: true, chrome: true };
-  return { key: "visit", node: <VisitStatus />, tabs: true, progress: true, chrome: true };
+  if (phase === "ready") return { key: "home", node: <Home />, tabs: true, progress: false, chrome: true };
+  if (phase === "released") return { key: `result-${s.determination?.outcome}-${s.determination?.signedAt}`, node: <Result />, tabs: true, progress: false, chrome: true };
+  return { key: "visit", node: <VisitStatus />, tabs: true, progress: false, chrome: true };
 }
 
 export function PatientApp() {
@@ -115,15 +111,26 @@ export function PatientApp() {
                 </button>
               )}
             </div>
-            <div className="min-w-0 flex-1">{view.progress && <RoadProgress steps={STEPS} current={progressIndex(phase, patientStep)} />}</div>
-            <div className="flex shrink-0 items-center">
-              <button onClick={cycleText} aria-label={`Text size ${Math.round(textScale * 100)} percent`} className="flex size-12 items-center justify-center rounded-full hover:bg-mist">
-                <span className="font-display font-bold leading-none" style={{ fontSize: 15 + (textScale - 1) * 30 }}>
+            <div className="min-w-0 flex-1">
+              {view.progress && (
+                <>
+                  <RoadProgress steps={STEPS} current={progressIndex(phase, patientStep)} />
+                  <div className="-mt-0.5 text-[13px] font-semibold text-graphite">
+                    Step {progressIndex(phase, patientStep) + 1} of {STEPS.length}: {STEPS[progressIndex(phase, patientStep)]}
+                  </div>
+                </>
+              )}
+            </div>
+            <div className="flex shrink-0 items-center gap-1">
+              <button onClick={cycleText} aria-label={`Text size ${Math.round(textScale * 100)} percent`} className="flex h-14 w-14 flex-col items-center justify-center gap-0.5 rounded-xl hover:bg-mist">
+                <span className="font-display font-bold leading-none" style={{ fontSize: 17 + (textScale - 1) * 20 }}>
                   Aa
                 </span>
+                <span className="text-[12px] font-semibold text-graphite">Text</span>
               </button>
-              <button onClick={toggleSpeech} aria-label={speaking ? "Stop reading" : "Read aloud"} aria-pressed={speaking} className={`flex size-12 items-center justify-center rounded-full ${speaking ? "bg-asphalt text-white" : "hover:bg-mist"}`}>
-                {speaking ? <VolumeX size={24} /> : <Volume2 size={24} />}
+              <button onClick={toggleSpeech} aria-label={speaking ? "Stop reading" : "Read aloud"} aria-pressed={speaking} className={`flex h-14 w-14 flex-col items-center justify-center gap-0.5 rounded-xl ${speaking ? "bg-asphalt text-white" : "hover:bg-mist"}`}>
+                {speaking ? <VolumeX size={22} /> : <Volume2 size={22} />}
+                <span className={`text-[12px] font-semibold ${speaking ? "text-white" : "text-graphite"}`}>{speaking ? "Stop" : "Listen"}</span>
               </button>
             </div>
           </header>

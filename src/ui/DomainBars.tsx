@@ -8,15 +8,21 @@ export function DomainBars({ domains, patient = false, delay = 0.4 }: { domains:
   return (
     <div className="flex flex-col gap-5">
       {domains.map((d, i) => {
-        const frac = d.points / d.max;
-        const low = frac < 0.5;
+        const frac = d.max ? d.points / d.max : 0;
+        const low = !patient && frac < 0.5;
         return (
           <div key={d.id}>
             <div className="mb-2 flex items-baseline justify-between gap-3">
               <span className={patient ? "text-[19px] font-semibold" : "text-[16px] font-semibold"}>{patient ? d.patientLabel : d.label}</span>
               <span className={`font-display font-bold tnum ${patient ? "text-[19px]" : "text-[16px]"}`}>
-                {fmt(d.points)}
-                <span className="font-normal text-graphite"> of {d.max}</span>
+                {d.max ? (
+                  <>
+                    {fmt(d.points)}
+                    <span className="font-normal text-graphite"> of {d.max}</span>
+                  </>
+                ) : (
+                  <span className="font-normal text-graphite">Not completed</span>
+                )}
               </span>
             </div>
             <div className={`h-2.5 overflow-hidden rounded-full ${low ? "bg-alert-tint" : "bg-mist"}`}>

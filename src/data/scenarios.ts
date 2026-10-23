@@ -48,7 +48,7 @@ export const outcomeCopy: Record<
   clear: {
     label: "Clear",
     title: "You're clear to drive.",
-    note: "Your vision, thinking and reactions are all where they need to be. Keep your eye exams up to date and come back next year.",
+    note: "Your vision, thinking, strength and simulator drive all came out well. I found no reason to limit your driving right now.",
     conditions: [],
     plan: ["Yearly eye exam"],
     retestMonths: 12,
@@ -56,43 +56,46 @@ export const outcomeCopy: Record<
   conditions: {
     label: "Drive with conditions",
     title: "You can keep driving, with a few limits.",
-    note: "You drove well on familiar roads. Lane changes at speed and glare were harder, so stay off highways and drive in daylight for now.",
+    note: "You drove well on familiar roads. Lane changes at highway speed were harder, and the vision in your left eye has dropped since last year. Until your re-test, drive in daylight, stay off highways and stay within 15 miles of home.",
     conditions: ["Daylight only", "No highways", "Within 15 miles of home"],
     plan: ["Eye exam for glare", "Two practice drives on the simulator"],
     retestMonths: 6,
   },
   pause: {
     label: "Pause and reassess",
-    title: "Let's pause driving for now.",
-    note: "Your cataract is affecting your vision more than in March, and your sleep medicine may be adding to it. Both can be treated. Once they are, we'll test again.",
+    title: "Pause driving until your eyes are treated.",
+    note: "Your cataract is affecting your vision more than it did in March, and your sleep medicine may be making you drowsy in the morning. Both can be treated. Once they are, we'll test again.",
     conditions: [],
-    plan: ["Cataract review with Granite Eye Associates", "Ask Dr. Patel about your sleep medicine", "Re-test after treatment"],
-    retestMonths: 3,
+    plan: ["Cataract review", "Sleep medicine review", "Re-test after treatment"],
+    retestMonths: 0,
   },
   stop: {
     label: "Time to stop",
     title: "It's time to stop driving.",
-    note: "We talked about this today. Your plan below makes sure you can still get everywhere you need to go.",
+    note: "Your memory test and the simulator drive showed that driving isn't safe for you right now. At one left turn you didn't see an oncoming car. We went over this together today. A memory clinic will look into why.",
     conditions: [],
-    plan: ["Memory clinic referral", "Sarah added as your support person"],
+    plan: ["Memory clinic visit", "Ask Sarah to help with rides"],
     retestMonths: 0,
   },
 };
 
+/** Who takes care of each plan item, in the patient's words. */
+export const planDetail: Record<string, string> = {
+  "Yearly eye exam": "Granite Eye Associates will send you a reminder.",
+  "Eye exam for glare": "Granite Eye Associates will call you to book.",
+  "Cataract review": "Granite Eye Associates will call you this week to book.",
+  "Sleep medicine review": "Dana sent Dr. Patel a note. Dr. Patel's office will call you.",
+  "Two practice drives on the simulator": "Dana's office will call you to book.",
+  "On-road driving check": "Dana's office will call you to book.",
+  "Therapy for strength": "Lakeview Rehabilitation will call you to book.",
+  "Memory clinic visit": "Dr. Patel's office will call you to book.",
+  "Ask Sarah to help with rides": "Only if you want to. You choose what Sarah sees in Family.",
+  "Re-test after treatment": "Dana's office will call you once your treatment is done.",
+};
+
 export const conditionLibrary = ["Daylight only", "No highways", "Within 15 miles of home", "No passengers", "Spinner knob", "Extra mirrors"];
 
-export const planLibrary = [
-  "Yearly eye exam",
-  "Eye exam for glare",
-  "Cataract review with Granite Eye Associates",
-  "Ask Dr. Patel about your sleep medicine",
-  "Two practice drives on the simulator",
-  "On-road evaluation with a CDRS",
-  "Occupational therapy for strength",
-  "Memory clinic referral",
-  "Sarah added as your support person",
-  "Re-test after treatment",
-];
+export const planLibrary = Object.keys(planDetail);
 
 // Shown when the tablet tests were skipped in the demo.
 export const sampleClock =

@@ -470,13 +470,20 @@ export function render(ctx: CanvasRenderingContext2D, W: number, H: number, t: n
 
   // Cross traffic at left turns.
   LEFT_TURNS.forEach((at, i) => {
-    const t0 = at - 1.4;
-    if (t < t0 || t > t0 + 1.6) return;
-    const k = (t - t0) / 1.6;
     const near = raw.collision && i === 1;
-    const y = horizon + H * (near ? 0.2 : 0.06);
+    let cx: number;
     const size = W * (near ? 0.2 : 0.07);
-    const cx = -size + (W + 2 * size) * k;
+    const y = horizon + H * (near ? 0.2 : 0.06);
+    if (near) {
+      // The car the driver misses pulls across and is struck in front of them.
+      const t0 = crashAt - 0.9;
+      if (t < t0 || t > crashAt + 0.7) return;
+      cx = -size + (W / 2 + size) * smooth(t0, crashAt, t);
+    } else {
+      const t0 = at - 1.4;
+      if (t < t0 || t > t0 + 1.6) return;
+      cx = -size + (W + 2 * size) * ((t - t0) / 1.6);
+    }
     ctx.save();
     ctx.translate(cx, y);
     ctx.fillStyle = "rgba(20,24,28,0.25)";

@@ -1,11 +1,11 @@
 import { Check, ChevronDown } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { useEffect, useRef, useState } from "react";
-import { patient, specialist } from "../data/demo";
+import { patient, referringDoctor, specialist } from "../data/demo";
 import { conditionLibrary, outcomeCopy, planLibrary } from "../data/scenarios";
 import { addMonths, shortDate, timeOf, today } from "../lib/dates";
 import type { Domain, Outcome } from "../lib/score";
-import { determinationFor, useDemo, useScore } from "../state/store";
+import { determinationFor, useDemo, useScore, type Determination } from "../state/store";
 import { HealthKeyLogo } from "../ui/Brand";
 import { Button, Segmented } from "../ui/primitives";
 import { Gauge } from "../ui/Road";
@@ -17,13 +17,13 @@ const outcomes: Outcome[] = ["clear", "conditions", "pause", "stop"];
 
 function DomainRow({ d }: { d: Domain }) {
   const [open, setOpen] = useState(false);
-  const low = d.points < d.max / 2;
+  const low = d.max > 0 && d.points < d.max / 2;
   return (
     <div>
       <button onClick={() => setOpen(!open)} aria-expanded={open} className="flex w-full items-center gap-4 px-5 py-3.5 text-left">
         <span className="w-28 text-[16px] font-semibold">{d.label}</span>
         <span className={`h-2 flex-1 overflow-hidden rounded-full ${low ? "bg-alert-tint" : "bg-mist"}`}>
-          <span className={`block h-full rounded-full ${low ? "bg-alert" : "bg-asphalt"}`} style={{ width: `${(d.points / d.max) * 100}%` }} />
+          <span className={`block h-full rounded-full ${low ? "bg-alert" : "bg-asphalt"}`} style={{ width: `${d.max ? (d.points / d.max) * 100 : 0}%` }} />
         </span>
         <span className="w-20 text-right font-display text-[16px] font-bold tnum">
           {fmt(d.points)} <span className="font-normal text-graphite">/ {d.max}</span>
@@ -38,9 +38,7 @@ function DomainRow({ d }: { d: Domain }) {
                 <div key={it.id} className="flex items-center justify-between gap-3 px-4 py-2.5 text-[14px]">
                   <span className="font-semibold">{it.label}</span>
                   <span className="flex-1 truncate text-right text-graphite">{it.raw}</span>
-                  <span className="w-12 text-right font-display font-bold tnum">
-                    {it.points}/{it.max}
-                  </span>
+                  <span className="w-12 text-right font-display font-bold tnum">{it.done ? `${it.points}/${it.max}` : "—"}</span>
                 </div>
               ))}
               {d.id === "cognition" && <div className="px-4 py-2.5 text-[13px] text-graphite">Sheet items total 17. Version 0 rescales cognition to 20.</div>}
@@ -60,9 +58,11 @@ function Chip({ on, label, onClick }: { on: boolean; label: string; onClick: () 
   );
 }
 
-function SignaturePad({ onSigned, signed }: { onSigned: (v: string | null) => void; signed: boolean }) {
+function SignaturePad({ onSigned, value }: { onSigned: (v: string | null) => void; value: string | null }) {
   const ref = useRef<HTMLCanvasElement>(null);
   const drawing = useRef(false);
+  const moved = useRef(0);
+  const signed = !!value;
   useEffect(() => {
     const c = ref.current!;
     c.width = c.clientWidth * 2;
@@ -73,23 +73,35 @@ function SignaturePad({ onSigned, signed }: { onSigned: (v: string | null) => vo
     ctx.lineJoin = "round";
     ctx.strokeStyle = "#1C2229";
   }, []);
+  // Keep the ink in step with the stored signature (cleared by edits, restored after reload or in another tab).
+  useEffect(() => {
+    const c = ref.current!;
+    const ctx = c.getContext("2d")!;
+    if (!value) {
+      ctx.clearRect(0, 0, c.width, c.height);
+      return;
+    }
+    if (drawing.current || !value.startsWith("data:image")) return;
+    const img = new Image();
+    img.onload = () => {
+      ctx.clearRect(0, 0, c.width, c.height);
+      ctx.drawImage(img, 0, 0, c.width, c.height);
+    };
+    img.src = value;
+  }, [value]);
   const pos = (e: React.PointerEvent<HTMLCanvasElement>) => {
     const r = e.currentTarget.getBoundingClientRect();
     return [((e.clientX - r.left) / r.width) * e.currentTarget.width, ((e.clientY - r.top) / r.height) * e.currentTarget.height];
-  };
-  const clear = () => {
-    const c = ref.current!;
-    c.getContext("2d")!.clearRect(0, 0, c.width, c.height);
-    onSigned(null);
   };
   return (
     <div className="relative">
       <canvas
         ref={ref}
-        className="h-[80px] w-full touch-none rounded-xl border-2 border-dashed border-line-strong bg-canvas"
+        className="h-[76px] w-full touch-none rounded-xl border-2 border-dashed border-line-strong bg-canvas"
         aria-label="Signature"
         onPointerDown={(e) => {
           drawing.current = true;
+          moved.current = 0;
           e.currentTarget.setPointerCapture(e.pointerId);
           const ctx = e.currentTarget.getContext("2d")!;
           const [x, y] = pos(e);
@@ -102,21 +114,26 @@ function SignaturePad({ onSigned, signed }: { onSigned: (v: string | null) => vo
           const [x, y] = pos(e);
           ctx.lineTo(x, y);
           ctx.stroke();
+          moved.current += 1;
         }}
         onPointerUp={(e) => {
+          if (!drawing.current) return;
           drawing.current = false;
-          onSigned(e.currentTarget.toDataURL());
+          if (moved.current > 3) onSigned(e.currentTarget.toDataURL());
         }}
+        onPointerCancel={() => (drawing.current = false)}
       />
       {!signed && <span className="pointer-events-none absolute inset-0 flex items-center justify-center text-[15px] text-graphite">Sign here</span>}
       {signed && (
-        <button onClick={clear} className="absolute top-2 right-2 rounded-lg bg-white px-2.5 py-1 text-[13px] font-semibold text-graphite shadow-sm">
+        <button onClick={() => onSigned(null)} className="absolute top-2 right-2 rounded-lg bg-white px-2.5 py-1 text-[13px] font-semibold text-graphite shadow-sm">
           Clear
         </button>
       )}
     </div>
   );
 }
+
+const label = "text-[15px] font-semibold text-graphite";
 
 export function ReviewSign() {
   const d = useDemo((s) => s.determination);
@@ -127,20 +144,24 @@ export function ReviewSign() {
   const attention = useAttention();
   const [more, setMore] = useState(false);
   if (!d) return null;
-  const update = (p: Partial<typeof d>) => set({ determination: { ...d, ...p } });
-  const pickOutcome = (o: Outcome) => set({ determination: { ...determinationFor(o), signature: d.signature } });
+
+  // Any change after signing voids the signature.
+  const update = (p: Partial<Determination>) => set({ determination: { ...d, ...p, signature: "signature" in p ? (p.signature ?? null) : null } });
+  const pickOutcome = (o: Outcome) => {
+    const edited = d.outcome ? d.note !== outcomeCopy[d.outcome].note : d.note.trim() !== "";
+    const next = determinationFor(o);
+    set({ determination: { ...next, note: edited ? d.note : next.note, reasoning: d.reasoning, signature: null } });
+  };
   const toggle = (list: string[], v: string) => (list.includes(v) ? list.filter((x) => x !== v) : [...list, v]);
-  const stop = d.outcome === "stop";
-  const canSign = !!d.signature && (!stop || d.discussed);
+
   const hardStops = result.findings.filter((f) => f.kind === "hardStop");
   const flags = result.findings.filter((f) => f.kind === "flag");
   const sim = result.domains.find((x) => x.id === "simulator")!;
+  const needsTalk = d.outcome === "stop" || d.outcome === "pause";
+  const differs = d.outcome !== null && d.outcome !== result.suggested;
+  const canSign = d.outcome !== null && !!d.signature && (!needsTalk || d.discussed) && (!differs || d.reasoning.trim().length > 0) && d.note.trim().length > 0;
 
-  const sign = () => {
-    const support = d.plan.some((p) => p.startsWith("Sarah added"));
-    const familyShare = useDemo.getState().familyShare;
-    set({ phase: "released", tab: "home", determination: { ...d, signedAt: Date.now() }, familyShare: support ? { ...familyShare, results: true } : familyShare });
-  };
+  const sign = () => set({ phase: "released", tab: "home", determination: { ...d, signedAt: Date.now() } });
 
   return (
     <div className="flex h-full min-w-0 flex-1">
@@ -151,13 +172,13 @@ export function ReviewSign() {
               <div className="divide-y divide-line pb-1">
                 {hardStops.map((f) => (
                   <div key={f.text} className="flex items-center gap-3 px-5 py-3">
-                    <span className="rounded-md bg-alert px-2 py-0.5 text-[12px] font-bold text-white">Hard stop</span>
+                    <span className="shrink-0 rounded-md bg-alert px-2 py-0.5 text-[12px] font-bold text-white">Hard stop</span>
                     <span className="text-[16px] font-semibold">{f.text}</span>
                   </div>
                 ))}
                 {flags.map((f) => (
                   <div key={f.text} className="flex items-center gap-3 px-5 py-3">
-                    <span className="rounded-md bg-signal-soft px-2 py-0.5 text-[12px] font-bold text-signal-ink">Flag</span>
+                    <span className="shrink-0 rounded-md bg-signal-soft px-2 py-0.5 text-[12px] font-bold text-signal-ink">Flag</span>
                     <span className="text-[16px]">{f.text}</span>
                   </div>
                 ))}
@@ -166,10 +187,13 @@ export function ReviewSign() {
           )}
           <Card>
             <div className="flex items-center gap-6 px-5 pt-4 pb-2">
-              <Gauge value={result.total} size={150} delay={0.1} />
+              <Gauge value={result.total} max={result.possible} size={150} delay={0.1} />
               <div>
-                <div className="font-display text-[22px] font-extrabold">DriverScore</div>
-                <div className="text-[14px] text-graphite">Version 0, not yet validated. Hard stops override the total.</div>
+                <div className="font-display text-[22px] font-extrabold">
+                  DriverScore {result.total}
+                  {result.incomplete && <span className="font-normal text-graphite"> of {result.possible}</span>}
+                </div>
+                <div className="text-[14px] text-graphite">Version 0, not yet validated. It suggests an outcome; you decide.</div>
               </div>
             </div>
             <div className="divide-y divide-line border-t border-line pb-1">
@@ -181,8 +205,8 @@ export function ReviewSign() {
           <div className="mt-5 grid grid-cols-2 gap-5">
             <Card title="Self-rating">
               <div className="px-5 pt-1 pb-4 text-[16px] leading-snug">
-                {selfRating ? `${patient.first} rated her drive ${selfRating} of 5` : "Not given"}
-                {postFeel ? `, felt ${postFeel.toLowerCase()}.` : "."} Simulator: {sim.points} of 40.
+                {selfRating ? `${patient.first} rated her drive ${selfRating} of 5` : "Not given yet"}
+                {postFeel ? `, felt ${postFeel.toLowerCase()}.` : "."} Simulator: {sim.points} of {sim.max}.
               </div>
             </Card>
             <Card title="From her record">
@@ -200,80 +224,99 @@ export function ReviewSign() {
 
       <aside className="flex w-[340px] shrink-0 flex-col border-l border-line bg-paper">
         <div className="no-scrollbar min-h-0 flex-1 overflow-y-auto px-6 pt-[calc(var(--safe-top,0px)+24px)] pb-4">
-          <h2 className="text-[15px] font-semibold text-graphite">Outcome</h2>
+          <h2 className={label}>Your decision</h2>
           <div className="mt-2 flex flex-col gap-2" role="radiogroup" aria-label="Outcome">
             {outcomes.map((o) => {
               const on = d.outcome === o;
               return (
-                <button key={o} role="radio" aria-checked={on} onClick={() => pickOutcome(o)} className={`flex items-center justify-between rounded-xl border-2 px-4 py-3 text-left transition-colors ${on ? "border-asphalt" : "border-line hover:border-line-strong"}`}>
+                <button key={o} role="radio" aria-checked={on} onClick={() => pickOutcome(o)} className={`flex items-center justify-between rounded-xl border-2 px-4 py-3 text-left transition-colors ${on ? "border-asphalt bg-asphalt text-white" : "border-line hover:border-line-strong"}`}>
                   <span className="text-[16px] font-semibold">{outcomeCopy[o].label}</span>
-                  {result.suggested === o && <span className="rounded-md bg-signal-soft px-2 py-0.5 text-[12px] font-bold text-signal-ink">Suggested</span>}
+                  {result.suggested === o && <span className={`rounded-md px-2 py-0.5 text-[12px] font-bold ${on ? "bg-white/15 text-white" : "bg-signal-soft text-signal-ink"}`}>Suggested</span>}
                 </button>
               );
             })}
           </div>
 
-          {d.outcome === "conditions" && (
+          {d.outcome === null ? (
+            <p className="mt-5 text-[15px] leading-snug text-graphite">Choose the outcome. The plan and note fill in, and you can change anything before signing.</p>
+          ) : (
             <>
-              <h2 className="mt-6 text-[15px] font-semibold text-graphite">Conditions</h2>
+              {d.outcome === "conditions" && (
+                <>
+                  <h2 className={`mt-6 ${label}`}>Conditions</h2>
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    {conditionLibrary.map((c) => (
+                      <Chip key={c} label={c} on={d.conditions.includes(c)} onClick={() => update({ conditions: toggle(d.conditions, c) })} />
+                    ))}
+                  </div>
+                </>
+              )}
+
+              <h2 className={`mt-6 ${label}`}>Plan</h2>
               <div className="mt-2 flex flex-wrap gap-2">
-                {conditionLibrary.map((c) => (
-                  <Chip key={c} label={c} on={d.conditions.includes(c)} onClick={() => update({ conditions: toggle(d.conditions, c) })} />
+                {d.plan.map((p) => (
+                  <Chip key={p} label={p} on onClick={() => update({ plan: toggle(d.plan, p) })} />
                 ))}
+                <button onClick={() => setMore(!more)} aria-expanded={more} className="rounded-full border-2 border-dashed border-line-strong px-3.5 py-1.5 text-[14px] font-semibold text-graphite hover:text-asphalt">
+                  {more ? "Done" : "Add"}
+                </button>
               </div>
+              {more && (
+                <div className="mt-2 flex flex-wrap gap-2">
+                  {planLibrary
+                    .filter((p) => !d.plan.includes(p))
+                    .map((p) => (
+                      <Chip key={p} label={p} on={false} onClick={() => update({ plan: [...d.plan, p] })} />
+                    ))}
+                </div>
+              )}
+
+              {(d.outcome === "clear" || d.outcome === "conditions") && (
+                <>
+                  <h2 className={`mt-6 ${label}`}>Re-test in</h2>
+                  <div className="mt-2 flex items-center gap-3">
+                    <Segmented
+                      label="Re-test"
+                      value={d.retestMonths}
+                      onChange={(v) => update({ retestMonths: v })}
+                      options={[
+                        { value: 3, label: "3 mo" },
+                        { value: 6, label: "6 mo" },
+                        { value: 12, label: "12 mo" },
+                      ]}
+                    />
+                    <span className="text-[13px] text-graphite">By {shortDate(addMonths(today(), d.retestMonths))}</span>
+                  </div>
+                </>
+              )}
+
+              <h2 className={`mt-6 ${label}`}>Note to {patient.first}</h2>
+              <p className="text-[13px] text-graphite">She sees this under your name.</p>
+              <textarea value={d.note} onChange={(e) => update({ note: e.target.value })} rows={5} className="mt-2 w-full resize-none rounded-xl border-2 border-line bg-canvas px-3.5 py-3 text-[15px] leading-snug outline-none focus:border-asphalt" />
+
+              <h2 className={`mt-5 ${label}`}>Reasoning for the record</h2>
+              <p className="text-[13px] text-graphite">
+                Goes to the record and {referringDoctor.name}, not to {patient.first}.{differs ? " Required: your decision differs from the suggestion." : ""}
+              </p>
+              <textarea value={d.reasoning} onChange={(e) => update({ reasoning: e.target.value })} rows={3} className={`mt-2 w-full resize-none rounded-xl border-2 bg-canvas px-3.5 py-3 text-[15px] leading-snug outline-none focus:border-asphalt ${differs && !d.reasoning.trim() ? "border-signal" : "border-line"}`} />
             </>
           )}
-
-          <h2 className="mt-6 text-[15px] font-semibold text-graphite">Plan</h2>
-          <div className="mt-2 flex flex-wrap gap-2">
-            {d.plan.map((p) => (
-              <Chip key={p} label={p} on onClick={() => update({ plan: toggle(d.plan, p) })} />
-            ))}
-            <button onClick={() => setMore(!more)} aria-expanded={more} className="rounded-full border-2 border-dashed border-line-strong px-3.5 py-1.5 text-[14px] font-semibold text-graphite hover:text-asphalt">
-              {more ? "Done" : "Add"}
-            </button>
-          </div>
-          {more && (
-            <div className="mt-2 flex flex-wrap gap-2">
-              {planLibrary
-                .filter((p) => !d.plan.includes(p))
-                .map((p) => (
-                  <Chip key={p} label={p} on={false} onClick={() => update({ plan: [...d.plan, p] })} />
-                ))}
-            </div>
-          )}
-
-          {!stop && (
-            <>
-              <h2 className="mt-6 text-[15px] font-semibold text-graphite">Re-test in</h2>
-              <div className="mt-2 flex items-center gap-3">
-                <Segmented
-                  label="Re-test"
-                  value={d.retestMonths}
-                  onChange={(v) => update({ retestMonths: v })}
-                  options={[
-                    { value: 3, label: "3 mo" },
-                    { value: 6, label: "6 mo" },
-                    { value: 12, label: "12 mo" },
-                  ]}
-                />
-                <span className="text-[13px] text-graphite">By {shortDate(addMonths(today(), d.retestMonths))}</span>
-              </div>
-            </>
-          )}
-
-          <h2 className="mt-6 text-[15px] font-semibold text-graphite">Note to {patient.first}</h2>
-          <textarea value={d.note} onChange={(e) => update({ note: e.target.value })} rows={4} className="mt-2 w-full resize-none rounded-xl border-2 border-line bg-canvas px-3.5 py-3 text-[15px] leading-snug outline-none focus:border-asphalt" />
         </div>
 
         <div className="border-t border-line px-6 pt-4 pb-[calc(var(--safe-bottom,0px)+16px)]">
-          {stop && (
+          {d.outcome && (
+            <div className="mb-3 text-[14px] leading-snug">
+              <span className="text-graphite">{patient.first} will see: </span>
+              <span className="font-semibold">{outcomeCopy[d.outcome].title}</span>
+            </div>
+          )}
+          {needsTalk && (
             <button onClick={() => update({ discussed: !d.discussed })} role="checkbox" aria-checked={d.discussed} className="mb-3 flex items-start gap-3 rounded-xl bg-signal-soft px-4 py-3 text-left">
               <span className={`mt-0.5 flex size-6 shrink-0 items-center justify-center rounded-md ${d.discussed ? "bg-asphalt text-white" : "border-2 border-asphalt/40 bg-white"}`}>{d.discussed && <Check size={16} strokeWidth={3} />}</span>
-              <span className="text-[14px] leading-snug">I talked with {patient.first} about this in person. Required before she sees it.</span>
+              <span className="text-[14px] leading-snug">I talked with {patient.first} about this in person.</span>
             </button>
           )}
-          <SignaturePad signed={!!d.signature} onSigned={(v) => update({ signature: v })} />
+          <SignaturePad value={d.signature} onSigned={(v) => update({ signature: v })} />
           <div className="mt-1.5 text-[13px] text-graphite">
             {specialist.name}, {specialist.credentials}
           </div>
@@ -289,7 +332,7 @@ export function ReviewSign() {
 export function Released() {
   const d = useDemo((s) => s.determination);
   const result = useScore();
-  if (!d) return null;
+  if (!d || !d.outcome) return null;
   const signed = d.signedAt ? new Date(d.signedAt) : today();
   return (
     <Pane title="Signed and shared" sub={`${timeOf(signed)}, ${shortDate(signed)}`}>
@@ -303,12 +346,13 @@ export function Released() {
               <div className="font-display text-[26px] font-extrabold">{outcomeCopy[d.outcome].label}</div>
               <div className="text-[16px] text-graphite">
                 DriverScore {result.total}
+                {result.incomplete ? ` of ${result.possible}` : ""}
                 {d.retestMonths > 0 ? `, re-test by ${shortDate(addMonths(signed, d.retestMonths))}` : ""}
               </div>
             </div>
           </div>
           <div className="divide-y divide-line border-t border-line">
-            {[`On ${patient.first}'s phone`, "Saved to her HealthKey record", "Report sent to Dr. Anika Patel"].map((x) => (
+            {[`On ${patient.first}'s phone`, "Saved to her HealthKey record", `Report sent to ${referringDoctor.name}`, "Not sent to the DMV"].map((x) => (
               <div key={x} className="flex items-center gap-3 px-6 py-3.5 text-[16px]">
                 <Check size={18} strokeWidth={3} className="text-hk" />
                 {x}

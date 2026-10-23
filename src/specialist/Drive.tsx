@@ -4,17 +4,10 @@ import { useEffect, useState } from "react";
 import { patient } from "../data/demo";
 import { SimCanvas } from "../sim/SimCanvas";
 import { DRIVE, SCENARIOS, driveEvents, scenarioAt, useDriveClock } from "../sim/timeline";
-import { rawFor, useDemo, useScore } from "../state/store";
+import { useDemo, useRaw, useScore } from "../state/store";
 import { HealthKeyLogo } from "../ui/Brand";
 import { Button } from "../ui/primitives";
 import { Card, Pane } from "./Shell";
-
-function useRaw() {
-  const scenario = useDemo((s) => s.scenario);
-  const live = useDemo((s) => s.live);
-  const handsOn = useDemo((s) => s.handsOn);
-  return rawFor({ scenario, live, handsOn });
-}
 
 export function DrivePrep() {
   const feeling = useDemo((s) => s.preDriveFeeling);
@@ -25,7 +18,7 @@ export function DrivePrep() {
       title="Simulator drive"
       sub="Six scored drives on Simulator 1."
       actions={
-        <Button size="md" variant="signal" disabled={!feeling} onClick={() => go("driving", { simStart: Date.now(), live: { ...useDemo.getState().live, reactionMs: undefined } })}>
+        <Button size="md" variant="signal" disabled={!feeling} onClick={() => go("driving", { simStart: Date.now(), drivesCompleted: null, live: { ...useDemo.getState().live, reactionMs: undefined } })}>
           Start simulator
         </Button>
       }
@@ -75,11 +68,21 @@ export function LiveDrive() {
   const raw = useRaw();
   const t = useDriveClock(simStart, speed, 10);
   const idx = scenarioAt(t);
+  const [confirmStop, setConfirmStop] = useState(false);
+  useEffect(() => {
+    if (!confirmStop) return;
+    const id = setTimeout(() => setConfirmStop(false), 3000);
+    return () => clearTimeout(id);
+  }, [confirmStop]);
+  const stopDrive = () => {
+    if (!confirmStop) return setConfirmStop(true);
+    go("post-drive", { drivesCompleted: idx });
+  };
   const isLive = scenario === "live";
   const events = driveEvents(raw, isLive ? liveReaction : undefined).filter((e) => e.at <= t);
 
   useEffect(() => {
-    if (t >= DRIVE) go("post-drive");
+    if (t >= DRIVE && useDemo.getState().phase === "driving") go("post-drive");
   }, [t, go]);
 
   const mins = Math.floor(t / 60);
@@ -96,7 +99,14 @@ export function LiveDrive() {
           Live from Simulator 1
         </span>
       }
-      actions={<span className="font-display text-[24px] font-bold tnum">{`${mins}:${String(secs).padStart(2, "0")}`}</span>}
+      actions={
+        <>
+          <span className="font-display text-[24px] font-bold tnum">{`${mins}:${String(secs).padStart(2, "0")}`}</span>
+          <Button size="md" variant={confirmStop ? "primary" : "secondary"} onClick={stopDrive} className={confirmStop ? "!bg-alert" : ""}>
+            {confirmStop ? "Tap again to stop" : "Stop drive"}
+          </Button>
+        </>
+      }
     >
       <div className="overflow-hidden rounded-2xl bg-asphalt" style={{ aspectRatio: "16 / 7.6" }}>
         <SimCanvas simStart={simStart} speed={speed} raw={raw} liveReaction={{ live: isLive, measured: isLive ? liveReaction ?? null : null }} onBrake={(ms) => setLive({ reactionMs: ms })} />
@@ -143,9 +153,9 @@ export function DriveDone() {
   const result = useScore();
   const sim = result.domains.find((d) => d.id === "simulator")!;
   return (
-    <Pane title="Drive complete" sub="Results came across from Simulator 1." actions={<Button size="md" onClick={() => go("uploading")}>Save to health record</Button>}>
+    <Pane title={sim.items.every((i) => i.done) ? "Drive complete" : "Drive stopped"} sub="Results came across from Simulator 1." actions={<Button size="md" onClick={() => go("uploading")}>Continue to review</Button>}>
       <div className="grid grid-cols-[1.3fr_1fr] gap-5">
-        <Card title="Simulator" aside={<span className="font-display text-[15px] font-bold tnum">{sim.points} <span className="font-normal text-graphite">of 40</span></span>}>
+        <Card title="Simulator" aside={<span className="font-display text-[15px] font-bold tnum">{sim.points} <span className="font-normal text-graphite">of {sim.max}</span></span>}>
           <div className="divide-y divide-line pb-1">
             {sim.items.map((it) => (
               <div key={it.id} className="flex items-center justify-between px-5 py-3">
@@ -153,9 +163,13 @@ export function DriveDone() {
                   <div className="text-[16px] font-semibold">{it.label}</div>
                   <div className="text-[13px] text-graphite">{it.raw}</div>
                 </div>
-                <span className="font-display text-[16px] font-bold tnum">
-                  {it.points} <span className="font-normal text-graphite">of {it.max}</span>
-                </span>
+                {it.done ? (
+                  <span className="font-display text-[16px] font-bold tnum">
+                    {it.points} <span className="font-normal text-graphite">of {it.max}</span>
+                  </span>
+                ) : (
+                  <span className="text-[15px] text-graphite">Not completed</span>
+                )}
               </div>
             ))}
           </div>
@@ -178,11 +192,10 @@ export function DriveDone() {
 }
 
 const uploads = [
-  { label: "Intake answers", detail: "5 answers" },
+  { label: "Intake answers", detail: "4 answers, patient reported" },
   { label: "Tablet tests", detail: "4 results and the clock drawing" },
-  { label: "Hands-on checks", detail: "10 results" },
-  { label: "Simulator", detail: "6 drives and the session file" },
-  { label: "DriverScore v0", detail: "Draft for your review" },
+  { label: "Hands-on checks", detail: "10 results, entered by you" },
+  { label: "Simulator", detail: "Drive results and the session file" },
 ];
 
 export function Upload() {
@@ -190,15 +203,15 @@ export function Upload() {
   const speed = useDemo((s) => s.speed);
   const [n, setN] = useState(0);
   useEffect(() => {
-    const timers = uploads.map((_, i) => setTimeout(() => setN(i + 1), (500 + i * 520) / speed));
-    const end = setTimeout(startReview, (500 + uploads.length * 520 + 700) / speed);
+    const timers = uploads.map((_, i) => setTimeout(() => setN(i + 1), (350 + i * 420) / speed));
+    const end = setTimeout(() => useDemo.getState().phase === "uploading" && startReview(), (350 + uploads.length * 420 + 500) / speed);
     return () => {
       timers.forEach(clearTimeout);
       clearTimeout(end);
     };
   }, [speed, startReview]);
   return (
-    <Pane title={`Saving to ${patient.first}'s record`} sub={<span className="flex items-center gap-2">Every result keeps its source and time. <HealthKeyLogo height={18} /></span>}>
+    <Pane title={`Saving results to ${patient.first}'s record`} sub={<span className="flex items-center gap-2">Each result keeps its source and time. Your decision is added when you sign. <HealthKeyLogo height={18} /></span>}>
       <Card>
         <div className="divide-y divide-line">
           {uploads.map((u, i) => (

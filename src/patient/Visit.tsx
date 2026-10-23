@@ -3,7 +3,7 @@ import { motion } from "motion/react";
 import { useEffect, useState } from "react";
 import { locations, simulators, specialist, visit } from "../data/demo";
 import { longDate, today } from "../lib/dates";
-import { SCENARIOS, scenarioAt, useDriveClock } from "../sim/timeline";
+import { DRIVE, useDriveClock } from "../sim/timeline";
 import { atLeast, useDemo, type Phase } from "../state/store";
 import { Avatar } from "../ui/Brand";
 import { Button, CheckDot, ChoiceList, Group, SectionLabel } from "../ui/primitives";
@@ -12,22 +12,17 @@ import { Lead, Meta, Screen, Title } from "./Screen";
 
 export function Home() {
   const set = useDemo((s) => s.set);
-  const hkConnected = useDemo((s) => s.hkConnected);
-  const answers = useDemo((s) => s.answers);
-  const checklist = [
-    { label: "Health record connected", done: hkConnected },
-    { label: "Driving questions answered", done: Object.keys(answers).length > 0 },
-    { label: "Bring your glasses and hearing aids", done: false },
-    { label: "Bring your driver's license", done: false },
-  ];
+  const bring = ["Your glasses and hearing aids", "Your driver's license", "A ride home, just in case"];
   return (
     <Screen
-      speech={`Your driving assessment is today at ${visit.time}, at ${visit.place}, ${visit.unit}, with ${specialist.name}.`}
-      footer={<Button onClick={() => set({ patientStep: "where" })}>Check in</Button>}
+      speech={`Your driving assessment is today at ${visit.time}, at ${visit.place}, ${visit.unit}, with ${specialist.name}, a driving specialist. It takes about 2 hours. Bring your glasses, hearing aids and driver's license, and plan a ride home just in case.`}
+      footer={<Button onClick={() => set({ patientStep: "where" })}>I'm here</Button>}
     >
       <Meta>Driving assessment</Meta>
       <Title className="mt-2">Today, {visit.time}</Title>
-      <p className="mt-1 text-[20px] text-graphite">{longDate(today())}</p>
+      <p className="mt-1 text-[20px] text-graphite">
+        {longDate(today())}. {visit.length}.
+      </p>
       <Group className="mt-6">
         <div className="flex items-start gap-4 px-5 py-4">
           <MapPin className="mt-1 shrink-0 text-asphalt" size={24} />
@@ -45,12 +40,12 @@ export function Home() {
         </div>
       </Group>
       <div className="mt-8">
-        <SectionLabel>Before you go</SectionLabel>
+        <SectionLabel>Bring</SectionLabel>
         <Group>
-          {checklist.map((c) => (
-            <div key={c.label} className="flex items-center gap-4 px-5 py-4">
-              <CheckDot done={c.done} />
-              <span className={`text-[19px] ${c.done ? "text-graphite" : ""}`}>{c.label}</span>
+          {bring.map((b) => (
+            <div key={b} className="flex items-center gap-4 px-5 py-4">
+              <span className="h-6 w-1.5 shrink-0 rounded-full bg-signal" />
+              <span className="text-[19px]">{b}</span>
             </div>
           ))}
         </Group>
@@ -61,56 +56,37 @@ export function Home() {
 
 export function Where() {
   const set = useDemo((s) => s.set);
+  const here = locations.find((l) => l.here)!;
   return (
-    <Screen speech="Where are you? Choose your location.">
-      <Title>Where are you?</Title>
-      <Group className="mt-7">
-        {locations.map((l) => (
-          <button
-            key={l.id}
-            disabled={!l.here}
-            onClick={() => set({ location: l.id, patientStep: "which-sim" })}
-            className="flex w-full items-center gap-4 px-5 py-4 text-left transition-colors hover:bg-canvas disabled:opacity-45"
-          >
-            <span className="relative flex size-11 shrink-0 items-center justify-center rounded-full bg-mist">
-              {l.here && <motion.span className="absolute inset-0 rounded-full bg-signal/40" animate={{ scale: [1, 1.5], opacity: [0.7, 0] }} transition={{ duration: 1.6, repeat: Infinity }} />}
-              <MapPin size={22} className="relative" />
-            </span>
-            <span className="min-w-0 flex-1">
-              <span className="block text-[20px] font-semibold leading-snug">{l.name}</span>
-              <span className="block text-[17px] text-graphite">{l.here ? "You're here" : l.distance}</span>
-            </span>
-            {l.here && <ChevronRight className="shrink-0 text-fog" />}
-          </button>
-        ))}
-      </Group>
-    </Screen>
-  );
-}
-
-export function WhichSim() {
-  const set = useDemo((s) => s.set);
-  return (
-    <Screen speech="Choose your simulator. Simulator 1 in Room 204 is ready.">
-      <Title>Choose your simulator</Title>
-      <Lead>
-        {visit.place}, {visit.unit}
-      </Lead>
-      <div className="mt-7 flex flex-col gap-3">
+    <Screen speech={`You're at ${here.name}. Choose your simulator. Simulator 1 in Room 204 is ready.`}>
+      <Title>Check in</Title>
+      <div className="mt-6 flex items-center gap-4 rounded-2xl bg-paper px-5 py-4">
+        <span className="relative flex size-11 shrink-0 items-center justify-center rounded-full bg-mist">
+          <motion.span className="absolute inset-0 rounded-full bg-signal/40" animate={{ scale: [1, 1.5], opacity: [0.7, 0] }} transition={{ duration: 1.6, repeat: Infinity }} />
+          <MapPin size={22} className="relative" />
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className="block text-[17px] text-graphite">You're at</span>
+          <span className="block text-[20px] font-semibold leading-snug">{here.name}</span>
+          <span className="block text-[17px] text-graphite">{here.detail}</span>
+        </span>
+      </div>
+      <h2 className="mt-8 mb-3 font-display text-[24px] font-extrabold">Your simulator</h2>
+      <div className="flex flex-col gap-3">
         {simulators.map((s) => {
           const ready = s.status === "ready";
           return (
             <button
               key={s.id}
               disabled={!ready}
-              onClick={() => set({ simulator: s.id, patientStep: "connecting" })}
+              onClick={() => set({ location: here.id, simulator: s.id, patientStep: "connecting" })}
               className={`flex items-center gap-4 rounded-2xl border-2 px-5 py-5 text-left transition-colors ${ready ? "border-asphalt bg-paper" : "border-transparent bg-mist/70"}`}
             >
               <SimGlyph active={ready} />
               <span className="flex-1">
                 <span className="block text-[21px] font-semibold">{s.name}</span>
                 <span className="block text-[17px] text-graphite">
-                  {s.room}, {ready ? "ready" : s.note?.toLowerCase()}
+                  {s.room}, {ready ? "ready for you" : s.note?.toLowerCase()}
                 </span>
               </span>
               {ready && <ChevronRight className="text-asphalt" />}
@@ -140,6 +116,8 @@ export function Connecting() {
   const speed = useDemo((s) => s.speed);
   useEffect(() => {
     const id = setTimeout(() => {
+      const now = useDemo.getState();
+      if (now.phase !== "ready" || now.patientStep !== "connecting") return;
       go("checked-in");
       set({ patientStep: "home" });
     }, 2600 / speed);
@@ -191,9 +169,7 @@ export function VisitStatus() {
         <Avatar initials={specialist.initials} size={52} />
         <div>
           <div className="text-[20px] font-semibold">{specialist.name}</div>
-          <div className="text-[17px] text-graphite">
-            {specialist.credentials}, Room 204
-          </div>
+          <div className="text-[17px] text-graphite">Driving specialist, Room 204</div>
         </div>
       </div>
       <motion.div key={phase} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }} className="mt-8">
@@ -233,9 +209,10 @@ export function PreDrive() {
   const [v, setV] = useState<string | undefined>();
   const options = ["I feel fine", "A little dizzy or queasy", "Tired"];
   return (
-    <Screen speech={`Before you drive. How do you feel right now? ${options.join(". ")}.`} footer={<Button disabled={!v} onClick={() => set({ preDriveFeeling: v })}>Continue</Button>}>
+    <Screen speech={`Before you drive. How do you feel right now? If you're not feeling well, ${specialist.first} can wait. ${options.join(". ")}.`} footer={<Button disabled={!v} onClick={() => set({ preDriveFeeling: v })}>Continue</Button>}>
       <Meta className="mb-3">Before you drive</Meta>
       <Title>How do you feel right now?</Title>
+      <Lead>If you're not feeling well, {specialist.first} can wait.</Lead>
       <div className="mt-7">
         <ChoiceList options={options} value={v} onChange={(x) => setV(x as string)} />
       </div>
@@ -246,19 +223,19 @@ export function PreDrive() {
 export function Driving() {
   const simStart = useDemo((s) => s.simStart);
   const speed = useDemo((s) => s.speed);
-  const t = useDriveClock(simStart, speed, 4);
-  const i = scenarioAt(t);
+  const go = useDemo((s) => s.go);
+  const t = useDriveClock(simStart, speed, 2);
+  useEffect(() => {
+    if (t >= DRIVE && useDemo.getState().phase === "driving") go("post-drive");
+  }, [t, go]);
   return (
-    <Screen tone="dark" speech={`You're driving. ${SCENARIOS[i].label}.`}>
+    <Screen tone="dark" speech={`You're driving. Say stop any time and ${specialist.first} will pause the drive.`}>
       <div className="flex h-full flex-col justify-center pb-10">
         <div className="flex justify-center">
           <RoadLoader width={280} light />
         </div>
         <h1 className="mt-10 font-display text-[36px] leading-tight font-extrabold">You're driving</h1>
-        <motion.p key={i} initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="mt-3 text-[21px] text-white/80">
-          {SCENARIOS[i].label}, {i + 1} of {SCENARIOS.length}
-        </motion.p>
-        <p className="mt-6 text-[18px] leading-relaxed text-white/60">{specialist.first} is watching from the iPad. You can ask to stop at any time.</p>
+        <p className="mt-4 text-[20px] leading-relaxed text-white/75">Say "stop" any time and {specialist.first} will pause the drive.</p>
       </div>
     </Screen>
   );

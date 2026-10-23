@@ -1,7 +1,7 @@
 import { useEffect } from "react";
 import { SimCanvas } from "../sim/SimCanvas";
 import { DRIVE, useDriveClock } from "../sim/timeline";
-import { rawFor, useDemo } from "../state/store";
+import { useDemo, useRaw } from "../state/store";
 import { DriverScoreWordmark } from "../ui/Brand";
 import { SteeringWheel } from "../ui/Road";
 
@@ -11,7 +11,7 @@ export function SimulatorScreen() {
   const speed = useDemo((s) => s.speed);
   const scenario = useDemo((s) => s.scenario);
   const live = useDemo((s) => s.live);
-  const handsOn = useDemo((s) => s.handsOn);
+  const raw = useRaw();
   const setLive = useDemo((s) => s.setLive);
   const go = useDemo((s) => s.go);
   const t = useDriveClock(simStart, speed, 4);
@@ -40,7 +40,7 @@ export function SimulatorScreen() {
       <SimCanvas
         simStart={simStart}
         speed={speed}
-        raw={rawFor({ scenario, live, handsOn })}
+        raw={raw}
         liveReaction={{ live: isLive, measured: isLive ? live.reactionMs ?? null : null }}
         onBrake={(ms) => setLive({ reactionMs: ms })}
       />

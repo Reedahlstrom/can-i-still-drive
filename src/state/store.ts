@@ -1,6 +1,6 @@
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
-import { defaultAnswers } from "../data/demo";
+import { defaultAnswers, patient } from "../data/demo";
 import { outcomeCopy, presets, type ScenarioKey } from "../data/scenarios";
 import { score, type Outcome, type Raw } from "../lib/score";
 
@@ -62,7 +62,8 @@ export type Live = {
 };
 
 export type Determination = {
-  outcome: Outcome;
+  outcome: Outcome | null;
+  reasoning: string;
   conditions: string[];
   plan: string[];
   retestMonths: number;
@@ -72,9 +73,12 @@ export type Determination = {
   signedAt: number | null;
 };
 
-export type Ride = { dest: string; option: string; status: "choose" | "requested" | "arriving" } | null;
+export type Ride = { dest: string; other?: string; option: string; when: "now" | "later"; status: "choose" | "requested" | "arriving" } | null;
+
+export type Account = { name: string; dob: string; phone: string };
 
 type Data = {
+  account: Account;
   scenario: ScenarioKey;
   speed: 1 | 2;
   phase: Phase;
@@ -96,9 +100,11 @@ type Data = {
   postFeel: string | null;
   selfRating: number | null;
   simStart: number | null;
+  drivesCompleted: number | null;
   determination: Determination | null;
   ride: Ride;
   familyShare: Record<string, boolean>;
+  hkSharing: boolean;
 };
 
 type Actions = {
@@ -122,6 +128,7 @@ export const jumpLabels: Record<JumpStage, string> = {
 };
 
 const initial: Data = {
+  account: { name: `${patient.first} ${patient.last}`, dob: patient.dob, phone: patient.phone },
   scenario: "clear",
   speed: 1,
   phase: "onboarding",
@@ -132,7 +139,7 @@ const initial: Data = {
   textScale: 1,
   hkConnected: false,
   hkSources: ["lakeview", "granite-eye", "mainst"],
-  hkShare: { conditions: true, medicines: true, eyes: true, visits: true, labs: true },
+  hkShare: { conditions: true, medicines: true, eyes: true, visits: false, labs: false },
   answers: {},
   location: null,
   simulator: null,
@@ -143,30 +150,48 @@ const initial: Data = {
   postFeel: null,
   selfRating: null,
   simStart: null,
+  drivesCompleted: null,
   determination: null,
   ride: null,
-  familyShare: { results: false, rides: true, record: false },
+  familyShare: { results: false, rides: false },
+  hkSharing: true,
 };
 
-export function rawFor(s: Pick<Data, "scenario" | "live" | "handsOn">): Raw {
-  if (s.scenario !== "live") return { ...presets[s.scenario], ...s.handsOn };
-  const base = { ...presets.clear };
+export function rawFor(s: Pick<Data, "scenario" | "live" | "handsOn"> & { drivesCompleted?: number | null }): Raw {
+  const completedDrives = s.drivesCompleted ?? undefined;
+  if (s.scenario !== "live") return { ...presets[s.scenario], ...s.handsOn, completedDrives };
   const l = s.live;
-  if (l.trailsSeconds !== undefined) {
-    base.trailsSeconds = l.trailsSeconds;
-    base.trailsShort = true;
-  }
-  if (l.signs !== undefined) base.signs = l.signs;
-  if (l.colors !== undefined) base.colors = l.colors;
-  if (l.choice !== undefined) base.choice = l.choice;
-  if (l.reactionMs !== undefined) base.reactionMs = l.reactionMs;
+  const base: Raw = {
+    ...presets.clear,
+    completedDrives,
+    trailsSeconds: l.trailsSeconds === undefined ? undefined : l.trailsSeconds,
+    trailsErrors: l.trailsErrors,
+    trailsShort: true,
+    signs: l.signs,
+    colors: l.colors,
+    choice: l.choice,
+    reactionMs: l.reactionMs,
+  };
   return { ...base, ...s.handsOn };
 }
+
+export const blankDetermination: Determination = {
+  outcome: null,
+  reasoning: "",
+  conditions: [],
+  plan: [],
+  retestMonths: 0,
+  note: "",
+  discussed: false,
+  signature: null,
+  signedAt: null,
+};
 
 export function determinationFor(outcome: Outcome): Determination {
   const c = outcomeCopy[outcome];
   return {
     outcome,
+    reasoning: "",
     conditions: [...c.conditions],
     plan: [...c.plan],
     retestMonths: c.retestMonths,
@@ -188,15 +213,13 @@ function stageState(stage: JumpStage, keep: Pick<Data, "scenario" | "speed" | "t
   if (stage === "tests") return tests;
   const drive: Data = { ...tests, phase: "pre-drive", tabletStep: "done", preDriveFeeling: "I feel fine" };
   if (stage === "drive") return drive;
-  const outcome = score(rawFor(drive)).suggested;
-  const review: Data = { ...drive, phase: "review", postFeel: "Comfortable", selfRating: 4, determination: determinationFor(outcome) };
+  const review: Data = { ...drive, phase: "review", postFeel: "Comfortable", selfRating: 4, determination: { ...blankDetermination } };
   if (stage === "review") return review;
-  const det = review.determination!;
+  const det = determinationFor(score(rawFor(drive)).suggested);
   return {
     ...review,
     phase: "released",
     determination: { ...det, discussed: true, signature: "demo", signedAt: Date.now() },
-    familyShare: { ...review.familyShare, results: det.plan.some((p) => p.startsWith("Sarah added")) },
   };
 }
 
@@ -207,11 +230,7 @@ export const useDemo = create<Data & Actions>()(
       set: (p) => set(p),
       setLive: (p) => set({ live: { ...get().live, ...p } }),
       go: (phase, extra) => set({ phase, ...extra }),
-      startReview: () => {
-        const s = get();
-        const outcome = score(rawFor(s)).suggested;
-        set({ phase: "review", determination: determinationFor(outcome) });
-      },
+      startReview: () => set({ phase: "review", determination: { ...blankDetermination } }),
       reset: () => set({ ...initial, scenario: get().scenario, speed: get().speed }),
       jump: (stage) => {
         const s = get();
@@ -219,7 +238,7 @@ export const useDemo = create<Data & Actions>()(
       },
     }),
     {
-      name: "driverscore-demo",
+      name: "driverscore-demo-v2",
       version: 1,
       storage: createJSONStorage(() => localStorage),
       partialize: (s) => {
@@ -234,10 +253,14 @@ export const useDemo = create<Data & Actions>()(
 const channel = typeof BroadcastChannel !== "undefined" ? new BroadcastChannel("driverscore-demo") : null;
 let applyingRemote = false;
 if (channel) {
-  useDemo.subscribe((s) => {
+  useDemo.subscribe((s, prev) => {
     if (applyingRemote) return;
-    const { set: _a, setLive: _b, go: _c, startReview: _d, reset: _e, jump: _f, ...data } = s;
-    channel.postMessage(data);
+    const changed: Record<string, unknown> = {};
+    for (const k of Object.keys(s) as (keyof typeof s)[]) {
+      if (typeof s[k] === "function") continue;
+      if (s[k] !== prev[k]) changed[k] = s[k];
+    }
+    if (Object.keys(changed).length) channel.postMessage(changed);
   });
   channel.onmessage = (e: MessageEvent<Partial<Data>>) => {
     applyingRemote = true;
@@ -246,9 +269,12 @@ if (channel) {
   };
 }
 
-export const useScore = () => {
+export const useRaw = () => {
   const scenario = useDemo((s) => s.scenario);
   const live = useDemo((s) => s.live);
   const handsOn = useDemo((s) => s.handsOn);
-  return score(rawFor({ scenario, live, handsOn }));
+  const drivesCompleted = useDemo((s) => s.drivesCompleted);
+  return rawFor({ scenario, live, handsOn, drivesCompleted });
 };
+
+export const useScore = () => score(useRaw());

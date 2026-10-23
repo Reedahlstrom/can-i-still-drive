@@ -110,16 +110,16 @@ export function RoadLoader({ width = 300, light = false }: { width?: number; lig
 }
 
 /** Speedometer-style score dial. */
-export function Gauge({ value, size = 300, delay = 0.2, light = false }: { value: number; size?: number; delay?: number; light?: boolean }) {
+export function Gauge({ value, max = 100, size = 300, delay = 0.2, light = false }: { value: number; max?: number; size?: number; delay?: number; light?: boolean }) {
   const reduce = useReducedMotion();
   const sweep = 240;
   const start = -120;
   const angle = useMotionValue(start);
-  const shown = useTransform(angle, (a) => Math.round(((a - start) / sweep) * 100));
+  const shown = useTransform(angle, (a) => Math.round(((a - start) / sweep) * max));
   const [n, setN] = useState(reduce ? value : 0);
   useEffect(() => shown.on("change", (v) => setN(v)), [shown]);
   useEffect(() => {
-    const target = start + (sweep * value) / 100;
+    const target = start + (sweep * Math.min(value, max)) / max;
     if (reduce) {
       angle.set(target);
       setN(value);
@@ -127,7 +127,7 @@ export function Gauge({ value, size = 300, delay = 0.2, light = false }: { value
     }
     const c = animate(angle, target, { type: "spring", stiffness: 38, damping: 11, mass: 1.1, delay });
     return () => c.stop();
-  }, [value, delay, reduce, angle]);
+  }, [value, max, delay, reduce, angle]);
 
   const ink = light ? "#ffffff" : "#1C2229";
   const muted = light ? "rgba(255,255,255,0.18)" : "#E1E4E2";
@@ -164,7 +164,7 @@ export function Gauge({ value, size = 300, delay = 0.2, light = false }: { value
           const [x2, y2] = polar(deg, 104);
           return <line key={t} x1={x1} y1={y1} x2={x2} y2={y2} stroke={ink} strokeOpacity={major ? 0.8 : 0.3} strokeWidth={major ? 2.5 : 1.5} strokeLinecap="round" />;
         })}
-        {size >= 200 && [0, 20, 40, 60, 80, 100].map((t) => {
+        {size >= 200 && max === 100 && [0, 20, 40, 60, 80, 100].map((t) => {
           const [x, y] = polar(start + (sweep * t) / 100, 76);
           return (
             <text key={t} x={x} y={y + 5} textAnchor="middle" fontFamily="Overpass Variable" fontWeight="700" fontSize="14" fill={ink} fillOpacity="0.55">

@@ -14,6 +14,13 @@ const steps: { label: string; from: Phase; done: Phase }[] = [
 
 export function Rail() {
   const phase = useDemo((s) => s.phase);
+  const go = useDemo((s) => s.go);
+  const reopen: Partial<Record<string, () => void>> = {
+    "Record review": () => go("record-review"),
+    "Tablet tests": () => go("tablet-tests", { tabletStep: "handoff" }),
+    "Hands-on checks": () => go("hands-on"),
+    "Simulator drive": () => go("pre-drive"),
+  };
   const inVisit = atLeast(phase, "record-review");
   const simBusy = atLeast(phase, "checked-in") && phase !== "released";
   return (
@@ -46,8 +53,14 @@ export function Rail() {
             {steps.map((s, i) => {
               const done = atLeast(phase, s.done);
               const now = !done && atLeast(phase, s.from);
+              const canOpen = done && phase !== "released" && !!reopen[s.label];
               return (
-                <li key={s.label} className={`flex items-center gap-3 rounded-xl px-3 py-2.5 ${now ? "bg-white/10" : ""}`}>
+                <li key={s.label}>
+                  <button
+                    disabled={!canOpen}
+                    onClick={reopen[s.label]}
+                    className={`flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left ${now ? "bg-white/10" : canOpen ? "hover:bg-white/5" : ""}`}
+                  >
                   <span
                     className={`flex size-7 shrink-0 items-center justify-center rounded-full font-display text-[14px] font-bold ${
                       done ? "bg-white text-asphalt" : now ? "bg-signal text-asphalt" : "bg-white/10 text-white/60"
@@ -56,6 +69,7 @@ export function Rail() {
                     {done ? <Check size={16} strokeWidth={3} /> : i + 1}
                   </span>
                   <span className={`text-[16px] ${now ? "font-semibold" : done ? "text-white/70" : "text-white/55"}`}>{s.label}</span>
+                  </button>
                 </li>
               );
             })}

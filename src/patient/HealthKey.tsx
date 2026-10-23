@@ -35,12 +35,14 @@ export function HkIntro() {
 
 export function HkConnected() {
   const set = useDemo((s) => s.set);
+  const hkShare = useDemo((s) => s.hkShare);
   const rows = [
-    { label: "Conditions", n: record.conditions.length },
-    { label: "Medicines", n: record.medicines.length },
-    { label: "Eye exams", n: record.eyes.length },
-    { label: "Visits", n: 23 },
-  ];
+    { id: "conditions", label: "Conditions", n: record.conditions.length },
+    { id: "medicines", label: "Medicines", n: record.medicines.length },
+    { id: "eyes", label: "Eye exams", n: record.eyes.length },
+    { id: "visits", label: "Visit notes", n: 23 },
+    { id: "labs", label: "Lab results", n: record.labs.length },
+  ].filter((r) => hkShare[r.id]);
   return (
     <Screen
       speech="Your record is connected. Your driving specialist will see these during your visit."
@@ -50,7 +52,7 @@ export function HkConnected() {
         <Check size={34} strokeWidth={3} />
       </motion.div>
       <Title>Your record is connected</Title>
-      <Lead>Your driving specialist will see these during your visit.</Lead>
+      <Lead>Your driving specialist will see what you shared.</Lead>
       <Group className="mt-7">
         {rows.map((r) => (
           <div key={r.label} className="flex items-center justify-between px-5 py-4 text-[20px]">
@@ -89,7 +91,7 @@ function Assembling({ onDone }: { onDone: () => void }) {
   useEffect(() => {
     const t = (ms: number) => ms / speed;
     const timers = sources.map((_, i) => setTimeout(() => setDone(i + 1), t(900 + i * 850)));
-    const end = setTimeout(() => doneRef.current(), t(900 + sources.length * 850 + 700));
+    const end = setTimeout(() => useDemo.getState().hkStep === "assembling" && doneRef.current(), t(900 + sources.length * 850 + 700));
     return () => {
       timers.forEach(clearTimeout);
       clearTimeout(end);
@@ -144,6 +146,7 @@ export function HkSheet() {
   const hkSources = useDemo((s) => s.hkSources);
   const hkShare = useDemo((s) => s.hkShare);
   const textScale = useDemo((s) => s.textScale);
+  const account = useDemo((s) => s.account);
   const finish = () => set({ hkStep: null, hkConnected: true, patientStep: "hk-connected" });
 
   return (
@@ -181,15 +184,15 @@ export function HkSheet() {
                       <Avatar initials={patient.initials} size={52} tone="hk" />
                       <div>
                         <div className="text-[20px] font-semibold">
-                          {patient.first} {patient.last}
+                          {account.name}
                         </div>
-                        <div className="text-[16px] text-graphite">{patient.phone}, verified</div>
+                        <div className="text-[16px] text-graphite">{account.phone}, verified</div>
                       </div>
                     </div>
                     <p className="mt-5 text-[18px] leading-relaxed text-graphite">Your records are private and never sold.</p>
                     <div className="mt-auto">
                       <Button variant="hk" className="w-full" onClick={() => set({ hkStep: "sources" })}>
-                        Continue as {patient.first}
+                        Continue as {account.name.split(" ")[0]}
                       </Button>
                     </div>
                   </SheetBody>
@@ -229,7 +232,7 @@ export function HkSheet() {
                 {hkStep === "share" && (
                   <SheetBody key="share">
                     <h2 className="font-display text-[28px] leading-tight font-extrabold">Share with DriverScore</h2>
-                    <p className="mt-3 text-[18px] leading-relaxed text-graphite">For your driving assessment only. You can stop sharing at any time.</p>
+                    <p className="mt-3 text-[18px] leading-relaxed text-graphite">Only your driving specialist and Dr. Patel see this, for this assessment. You can stop sharing in your health record.</p>
                     <div className="mt-5 divide-y divide-line rounded-2xl bg-hk-tint">
                       {shareCategories.map((c) => (
                         <div key={c.id} className="flex items-center justify-between px-5 py-3.5">
@@ -240,7 +243,7 @@ export function HkSheet() {
                     </div>
                     <div className="mt-auto pt-4">
                       <Button variant="hk" className="w-full" onClick={() => set({ hkStep: "assembling" })}>
-                        Allow
+                        Share
                       </Button>
                     </div>
                   </SheetBody>

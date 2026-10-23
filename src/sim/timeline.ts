@@ -47,10 +47,10 @@ export type DriveEvent = { at: number; scenario: number; text: string; points?: 
 
 export function driveEvents(raw: Raw, liveReactionMs?: number): DriveEvent[] {
   const rt = liveReactionMs ?? raw.reactionMs;
-  const ev: DriveEvent[] = [{ at: STOP_AT, scenario: 0, text: "Brake reaction", points: `${(rt / 1000).toFixed(2)} s` }];
+  const ev: DriveEvent[] = [{ at: STOP_AT, scenario: 0, text: "Brake reaction", points: rt === undefined ? "No response" : `${(rt / 1000).toFixed(2)} s` }];
   RIGHT_TURNS.forEach((at, i) => ev.push({ at: at + TURN_LEN, scenario: 1, text: `Right turn ${i + 1}`, points: `${raw.rightTurns[i]} of 2` }));
   LEFT_TURNS.forEach((at, i) => {
-    if (raw.collision && i === 1) ev.push({ at: at + 0.7, scenario: 2, text: "Collision with oncoming car", alert: true });
+    if (raw.collision && i === 1) ev.push({ at: at + 0.7, scenario: 2, text: "Collision during left turn 2", alert: true });
     ev.push({ at: at + TURN_LEN, scenario: 2, text: `Left turn ${i + 1}`, points: `${raw.leftTurns[i]} of 3` });
   });
   LANE_CHANGES.forEach((at, i) => ev.push({ at: at + 1.6, scenario: 3, text: `Lane change ${i + 1}`, points: `${raw.laneChanges[i]} of 4` }));

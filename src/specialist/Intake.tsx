@@ -71,14 +71,30 @@ function Line({ title, detail, source }: { title: string; detail?: string; sourc
   );
 }
 
+const sourceId: Record<string, string> = {
+  "Main Street Pharmacy": "mainst",
+  "Granite Eye Associates": "granite-eye",
+  "Lakeview Health": "lakeview",
+  "Dr. Anika Patel": "lakeview",
+};
+
+/** The parts of her record she chose to share, from the sources she connected. */
+export function useSharedRecord() {
+  const hk = useDemo((s) => s.hkConnected);
+  const sharing = useDemo((s) => s.hkSharing);
+  const share = useDemo((s) => s.hkShare);
+  const sources = useDemo((s) => s.hkSources);
+  const on = hk && sharing;
+  const pick = (cat: keyof typeof record) => (on && share[cat] ? record[cat].filter((r) => !sourceId[r.source] || sources.includes(sourceId[r.source])) : []);
+  return { on, medicines: pick("medicines"), conditions: pick("conditions"), eyes: pick("eyes"), visits: pick("visits"), labs: pick("labs") };
+}
+
 export function useAttention() {
   const answers = useDemo((s) => s.answers);
-  const hk = useDemo((s) => s.hkConnected);
+  const shared = useSharedRecord();
   const items: { title: string; detail: string; source: string }[] = [];
-  if (hk) {
-    for (const m of [...record.medicines, ...record.conditions]) if (m.flag) items.push({ title: m.name, detail: m.flag, source: `${m.source}, ${m.date}` });
-    items.push({ title: "Referral", detail: record.visits[0].detail, source: `${record.visits[0].source}, ${record.visits[0].date}` });
-  }
+  for (const m of [...shared.medicines, ...shared.conditions]) if (m.flag) items.push({ title: m.name, detail: m.flag, source: `${m.source}, ${m.date}` });
+  items.push({ title: "Referral", detail: "Daughter raised a driving concern at her annual wellness visit.", source: `${referringDoctor.name}, Oct 6` });
   if (answers.incidents && answers.incidents !== "No") items.push({ title: `Reports ${String(answers.incidents).toLowerCase()} in the past year`, detail: "From her intake answers", source: "Patient reported, today" });
   const avoid = answers.avoid as string[] | undefined;
   if (avoid?.length && !avoid.includes("None of these")) items.push({ title: `Avoids ${avoid.map((a) => a.toLowerCase()).join(", ")}`, detail: "From her intake answers", source: "Patient reported, today" });
@@ -88,7 +104,8 @@ export function useAttention() {
 export function RecordReview() {
   const go = useDemo((s) => s.go);
   const answers = useDemo((s) => s.answers);
-  const hk = useDemo((s) => s.hkConnected);
+  const shared = useSharedRecord();
+  const hk = shared.on;
   const attention = useAttention();
   return (
     <Pane
@@ -116,14 +133,14 @@ export function RecordReview() {
             <>
               <Card title="Medicines">
                 <div className="divide-y divide-line pb-1">
-                  {record.medicines.map((m) => (
+                  {shared.medicines.map((m) => (
                     <Line key={m.name} title={m.name} detail={m.detail} source={`${m.source}, ${m.date}`} />
                   ))}
                 </div>
               </Card>
               <Card title="Conditions">
                 <div className="divide-y divide-line pb-1">
-                  {record.conditions.map((m) => (
+                  {shared.conditions.map((m) => (
                     <Line key={m.name} title={m.name} detail={m.detail} source={`${m.source}, ${m.date}`} />
                   ))}
                 </div>
@@ -147,7 +164,7 @@ export function RecordReview() {
           {hk && (
             <Card title="Eye exams">
               <div className="divide-y divide-line pb-1">
-                {record.eyes.map((m) => (
+                {shared.eyes.map((m) => (
                   <Line key={m.date} title={m.date} detail={m.detail} source={m.source} />
                 ))}
               </div>

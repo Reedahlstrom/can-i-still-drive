@@ -37,15 +37,20 @@ export function Handoff() {
 function PatientFrame({ step, children }: { step: TabletStep; children: ReactNode }) {
   const go = useDemo((s) => s.go);
   const i = order.indexOf(step);
+  const hold = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // The specialist can end the tests early by pressing and holding the step label.
+  const startHold = () => {
+    hold.current = setTimeout(() => go("hands-on", { tabletStep: "done" }), 1200);
+  };
+  const endHold = () => {
+    if (hold.current) clearTimeout(hold.current);
+  };
   return (
     <div className="flex h-full w-full flex-col bg-canvas">
       <header className="flex items-center justify-between px-10 pt-[calc(var(--safe-top,0px)+18px)] pb-3">
-        <span className="text-[18px] font-semibold text-graphite">{i >= 0 ? `Test ${i + 1} of ${order.length}` : "Tablet tests"}</span>
-        {step !== "done" && (
-          <button className="h-10 rounded-lg px-3 text-[15px] font-semibold text-graphite hover:bg-mist" onClick={() => go("hands-on", { tabletStep: "done" })}>
-            End tests ({specialist.first})
-          </button>
-        )}
+        <span onPointerDown={startHold} onPointerUp={endHold} onPointerLeave={endHold} className="select-none text-[18px] font-semibold text-graphite">
+          {i >= 0 ? `Test ${i + 1} of ${order.length}` : "Tablet tests"}
+        </span>
       </header>
       <div className="min-h-0 flex-1 px-10 pb-8">
         <motion.div key={step} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }} className="h-full">
@@ -405,7 +410,8 @@ function Colors({ next }: { next: () => void }) {
       <motion.div key={i} initial={{ opacity: 0, scale: 0.94 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.2 }} className="font-display text-[110px] leading-none font-extrabold" style={{ color: INKS[item.ink] }}>
         {item.word.toUpperCase()}
       </motion.div>
-      <div className="mt-14 grid grid-cols-4 gap-4">
+      <p className="mt-6 text-[22px] text-graphite">Tap the color of the ink, not the word.</p>
+      <div className="mt-8 grid grid-cols-4 gap-4">
         {(Object.keys(INKS) as Ink[]).map((c) => (
           <button key={c} onClick={() => pick(c)} className="flex h-[88px] w-[170px] items-center gap-4 rounded-2xl bg-paper px-5 text-[22px] font-semibold hover:bg-white">
             <span className="size-9 rounded-full" style={{ background: INKS[c] }} />
@@ -422,7 +428,7 @@ function Colors({ next }: { next: () => void }) {
 
 // --- Multiple choice ---
 const CHOICE_ITEMS = [
-  { q: "A school bus ahead has its red lights flashing. What do you do?", options: ["Stop and wait", "Pass slowly on the left", "Honk and go around"], answer: 0 },
+  { q: "A school bus ahead has its red lights flashing. What do you do?", options: ["Stop and wait", "Pass slowly on the left", "Slow down and pass carefully"], answer: 0 },
   { q: "You're turning left on a green light with no arrow. What do you do?", options: ["Turn right away", "Yield to oncoming traffic, then turn", "Wait for the light to turn red"], answer: 1 },
   { q: "What does a yellow diamond-shaped sign mean?", options: ["You have the right of way", "Stop ahead", "Warning: something ahead needs care"], answer: 2 },
 ];
@@ -430,10 +436,13 @@ const CHOICE_ITEMS = [
 function Choices({ next }: { next: () => void }) {
   const setLive = useDemo((s) => s.setLive);
   const [i, setI] = useState(0);
+  const [picked, setPicked] = useState<number | null>(null);
   const correct = useRef(0);
   const item = CHOICE_ITEMS[i];
-  const pick = (k: number) => {
-    if (k === item.answer) correct.current += 1;
+  const confirm = () => {
+    if (picked === null) return;
+    if (picked === item.answer) correct.current += 1;
+    setPicked(null);
     if (i + 1 < CHOICE_ITEMS.length) setI(i + 1);
     else {
       setLive({ choice: correct.current });
@@ -450,11 +459,20 @@ function Choices({ next }: { next: () => void }) {
       </motion.h1>
       <div className="mt-8 flex flex-col gap-3">
         {item.options.map((o, k) => (
-          <button key={`${i}-${k}`} onClick={() => pick(k)} className="min-h-[76px] rounded-2xl border-2 border-transparent bg-paper px-6 text-left text-[23px] hover:border-line-strong">
+          <button
+            key={`${i}-${k}`}
+            role="radio"
+            aria-checked={picked === k}
+            onClick={() => setPicked(k)}
+            className={`min-h-[76px] rounded-2xl border-2 bg-paper px-6 text-left text-[23px] transition-colors ${picked === k ? "border-asphalt" : "border-transparent hover:border-line-strong"}`}
+          >
             {o}
           </button>
         ))}
       </div>
+      <Button className="mt-8 w-[260px]" disabled={picked === null} onClick={confirm}>
+        {i + 1 < CHOICE_ITEMS.length ? "Next" : "Done"}
+      </Button>
     </div>
   );
 }
@@ -476,6 +494,8 @@ export function PatientMode() {
   const step = useDemo((s) => s.tabletStep);
   const set = useDemo((s) => s.set);
   const advance = () => {
+    const now = useDemo.getState();
+    if (now.phase !== "tablet-tests" || now.tabletStep !== step) return;
     const i = order.indexOf(step);
     set({ tabletStep: i + 1 < order.length ? order[i + 1] : "done" });
   };
