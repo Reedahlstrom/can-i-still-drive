@@ -1,5 +1,7 @@
 # Can I Still Drive
 
+Live demo: https://reedahlstrom.github.io/can-i-still-drive/
+
 Clickable prototype of DriverScore: a driving assessment done as part of a doctor's visit. The patient connects their health record through HealthKey, checks in at the hospital, takes tablet tests and a simulator drive, and gets a result their specialist has signed.
 
 ## Run it

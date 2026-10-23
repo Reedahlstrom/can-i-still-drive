@@ -40,7 +40,7 @@ export function HealthKeyLogo({ height = 26, light = false }: { height?: number;
     <span className="inline-flex items-center" style={{ gap: height * 0.38 }} aria-label="HealthKey">
       <HealthKeyTile size={height} inverted={!light} />
       <img
-        src={light ? "/healthkey-wordmark-white.png" : "/healthkey-wordmark-ink.png"}
+        src={`${import.meta.env.BASE_URL}${light ? "healthkey-wordmark-white.png" : "healthkey-wordmark-ink.png"}`}
         alt=""
         style={{ height: height * 0.62, width: "auto" }}
         draggable={false}
