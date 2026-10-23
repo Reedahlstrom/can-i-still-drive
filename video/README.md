@@ -11,4 +11,8 @@ cd video && npm run capture
 npx remotion render src/index.ts DriverScoreDemo out/DriverScore-demo.mp4 --codec h264 --crf 16 --gl=angle --port 3917
 ```
 
-Voiceover: `script.json` lines, generated per scene with Kokoro (af_heart) into `public/vo/`, with lengths in `public/vo/durations.json`. Scene timing follows those lengths (`src/timing.ts`).
+Voiceover: the lines in `script.json`, read as one take in ElevenLabs (Reed's voice), one paragraph per scene. `voice.py` cuts the take into `public/vo/<scene>.wav` at the pauses, levels it, and writes `durations.json` and `cues.json` (when each word starts). Scene lengths follow the clips, and `at(scene, phrase)` in `src/timing.ts` puts on-screen moments on the spoken word.
+
+```bash
+python3 voice.py --model path/to/ggml-base.en.bin take1.mp3 [take2.mp3 --use outcomes=2]
+```

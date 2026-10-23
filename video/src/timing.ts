@@ -1,3 +1,4 @@
+import cues from "../public/vo/cues.json";
 import durations from "../public/vo/durations.json";
 import script from "../script.json";
 import { FPS } from "./theme";
@@ -6,7 +7,7 @@ export type SceneId =
   | "open" | "problem" | "solution" | "home" | "checkin" | "assign" | "drive"
   | "record" | "review" | "clear" | "stop" | "outcomes" | "trust" | "close";
 
-export const ORDER: SceneId[] = ["open", "problem", "solution", "home", "checkin", "assign", "drive", "record", "review", "clear", "stop", "outcomes", "trust", "close"];
+export const ORDER: SceneId[] = ["open", "problem", "solution", "home", "checkin", "assign", "drive", "record", "review", "clear", "outcomes", "stop", "trust", "close"];
 
 /** Seconds of silence before the voice starts in each scene, and after it ends. */
 export const LEAD = 0.5;
@@ -17,7 +18,7 @@ export const TRANS = 20;
 const extra: Partial<Record<SceneId, number>> = { open: 2.2, problem: 0.4, solution: 0.8, assign: 0.6, drive: 1.5, review: 1.4, clear: 1.4, stop: 0.6, outcomes: 1.0, trust: 0.4, close: 3.2 };
 
 /** Scenes whose pictures need longer than their line, in seconds. The drive scene shows six drives. */
-const minimum: Partial<Record<SceneId, number>> = { drive: 16 };
+const minimum: Partial<Record<SceneId, number>> = { drive: 15 };
 
 const dur = durations as Record<SceneId, number>;
 const text = Object.fromEntries((script as { id: SceneId; text: string }[]).map((s) => [s.id, s.text])) as Record<SceneId, string>;
@@ -25,12 +26,19 @@ const text = Object.fromEntries((script as { id: SceneId; text: string }[]).map(
 export const voSeconds = (id: SceneId) => dur[id];
 export const sceneFrames = (id: SceneId) => Math.ceil(Math.max(LEAD + dur[id] + TAIL + (extra[id] ?? 0), minimum[id] ?? 0) * FPS);
 
-/** Frame within a scene where a phrase is spoken (proportional to its position in the line). */
+/** When each word starts in its voice clip: [character index in the line, seconds]. Measured from the recording. */
+const wordStarts = cues as Record<SceneId, [number, number][]>;
+
+/** Frame within a scene where a phrase is spoken. */
 export function at(id: SceneId, phrase: string, offset = 0) {
   const t = text[id];
   const i = t.indexOf(phrase);
   if (i < 0) throw new Error(`Phrase not found in ${id}: ${phrase}`);
-  return Math.round((LEAD + (dur[id] * i) / t.length + offset) * FPS);
+  const words = wordStarts[id];
+  // The word the phrase starts on; without measured cues, estimate from its position in the line.
+  const hit = words?.filter(([c]) => c <= i).pop();
+  const sec = hit ? hit[1] : (dur[id] * i) / t.length;
+  return Math.round((LEAD + sec + offset) * FPS);
 }
 
 export const sceneStarts = (() => {

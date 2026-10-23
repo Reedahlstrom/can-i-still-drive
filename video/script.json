@@ -1,58 +1,58 @@
 [
  {
   "id": "open",
-  "text": "Every year, millions of older drivers, and the families who love them, face the same question. Can I still drive?"
+  "text": "Millions of older drivers, and the families who love them, face the same question. Can I still drive?"
  },
  {
   "id": "problem",
-  "text": "In the United States, fifty-two million licensed drivers are sixty-five or older. Yet only a few hundred certified driver rehabilitation specialists serve the whole country. And the evidence that matters is scattered: in the doctor's notes, at the pharmacy, in last year's eye exam."
+  "text": "In the United States, fifty-two million licensed drivers are sixty-five or older. Yet only a few hundred certified driver rehabilitation specialists serve the whole country. And the evidence is scattered: in the doctor's notes, at the pharmacy, in last year's eye exam. So decisions come late, on worry instead of evidence."
  },
  {
   "id": "solution",
-  "text": "DriverScore brings it together, as part of a doctor's visit: the patient's own health record, and simulator drives chosen for her. A driving specialist reviews everything, and signs the result."
+  "text": "DriverScore brings it together in one record: her health record, her own answers, and simulator drives chosen for her. A clinician reviews it all and signs one plan."
  },
  {
   "id": "home",
-  "text": "It starts at home. Margaret confirms her details, then connects her health record through HealthKey. She chooses exactly what to share, and only her specialist and her doctor can see it. Four short questions about her driving, and she's ready."
+  "text": "Before the visit, Margaret connects her health record through HealthKey, and chooses exactly what to share. Then she answers four short questions about her driving."
  },
  {
   "id": "checkin",
-  "text": "At the hospital, she taps I'm here, and picks the simulator that's ready for her. On the specialist's iPad, Margaret appears, with her record and her answers already waiting. What matters most comes first: a new sleep medicine, a cataract, a close call."
+  "text": "At the hospital, she checks in on her phone. On the clinician's iPad, what matters most comes first: a new sleep medicine, a cataract, and a close call."
  },
  {
   "id": "assign",
-  "text": "From her record, the specialist picks the drives that matter for Margaret. Brake reaction, because of the new sleep medicine. A night drive with glare, because of the cataract. Left turns, where most close calls happen. Margaret sees which drives were chosen, and why."
+  "text": "From her record, the clinician assigns the drives that matter. Brake reaction, for the new sleep medicine. A night drive with glare, for the cataract. Left turns, where most close calls happen. Margaret sees which drives were chosen, and why."
  },
  {
   "id": "drive",
-  "text": "Then Margaret drives only what was assigned: six short simulator drives. As each one finishes, its score appears on the specialist's iPad."
+  "text": "Then she drives only what was assigned: six short simulator drives. As each one finishes, its score appears on the clinician's iPad."
  },
  {
   "id": "record",
-  "text": "When the drives end, every result is saved to Margaret's health record, with what was measured, and the rule behind each score."
+  "text": "Every result is saved to her health record, with what was measured and the rule behind each score."
  },
  {
   "id": "review",
-  "text": "Every score comes with its reasoning: what was measured, the rule, and the result. DriverScore shows each step of its logic and suggests an outcome. But the specialist decides. She chooses, writes a note in plain words, and signs."
+  "text": "Each score shows what was measured, the rule, and the result. DriverScore drafts a recommendation and shows its reasoning. The clinician makes the decision, edits the note, and signs."
  },
  {
   "id": "clear",
-  "text": "Margaret's result arrives on her phone. She's clear to drive. Each drive is explained in a plain sentence, and her next steps say exactly who does what, and when she'll be tested again."
- },
- {
-  "id": "stop",
-  "text": "When the news is harder, it's shared in person first. Then the app leads with how she'll get around: a ride with her daughter, a taxi by phone, a senior shuttle, Uber, or a self-driving car."
+  "text": "Margaret's plan arrives on her phone. She's clear to drive. Each drive is explained in plain words, with her next steps and her next re-test."
  },
  {
   "id": "outcomes",
-  "text": "There are four outcomes. Clear. Drive with conditions. Pause and reassess. And time to stop. Each one comes with a plan."
+  "text": "Every driver gets one of four outcomes, each with a plan. Clear. Drive with conditions, like daylight only. Pause and reassess, when a problem can be treated. And time to stop. Many causes can be treated, so there's often a path back to driving."
+ },
+ {
+  "id": "stop",
+  "text": "When it's time to stop, the clinician explains why, in person. Then her plan leads with how she'll get around: a ride with her daughter, a taxi, a senior shuttle, or a self-driving car."
  },
  {
   "id": "trust",
-  "text": "The specialist always decides. Margaret controls her data. Her result goes to her and her doctor. The app never sends it to the DMV, and her records are never sold."
+  "text": "And it's built with safeguards. The clinician always decides. Margaret controls what she shares, and her records are never sold. DriverScore never reports to the DMV on its own."
  },
  {
   "id": "close",
-  "text": "DriverScore. A clear answer, and a plan, for every driver."
+  "text": "DriverScore. One clinician-signed plan for every older driver."
  }
 ]
