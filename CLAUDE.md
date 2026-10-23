@@ -18,7 +18,7 @@ Demo prototype for partner presentations. Product name in the UI is DriverScore;
 - `src/patient` patient phone app
 - `src/specialist` specialist iPad app (record review and drive assignment, live drive, review and sign)
 - `src/data/drives.ts` the simulator drives and why each is recommended
-- `src/sim` simulator renderer and drive timeline
+- `src/sim` simulator: `timeline.ts` (drive times and event moments used by scoring), `engine/` (three.js scenes, traffic and choreography per drive), `hud.ts` (instruments drawn over the view). The video keeps a copy in `video/src/sim`; copy changes across.
 - `src/stage` presenter stage, device frames, demo controls, full-screen simulator
 - `src/state/store.ts` shared visit state (zustand, synced across tabs)
 - `src/lib/score.ts` DriverScore v0

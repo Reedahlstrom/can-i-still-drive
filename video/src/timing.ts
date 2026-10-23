@@ -16,11 +16,14 @@ export const TRANS = 20;
 
 const extra: Partial<Record<SceneId, number>> = { open: 2.2, problem: 0.4, solution: 0.8, assign: 0.6, drive: 1.5, review: 1.4, clear: 1.4, stop: 0.6, outcomes: 1.0, trust: 0.4, close: 3.2 };
 
+/** Scenes whose pictures need longer than their line, in seconds. The drive scene shows six drives. */
+const minimum: Partial<Record<SceneId, number>> = { drive: 16 };
+
 const dur = durations as Record<SceneId, number>;
 const text = Object.fromEntries((script as { id: SceneId; text: string }[]).map((s) => [s.id, s.text])) as Record<SceneId, string>;
 
 export const voSeconds = (id: SceneId) => dur[id];
-export const sceneFrames = (id: SceneId) => Math.ceil((LEAD + dur[id] + TAIL + (extra[id] ?? 0)) * FPS);
+export const sceneFrames = (id: SceneId) => Math.ceil(Math.max(LEAD + dur[id] + TAIL + (extra[id] ?? 0), minimum[id] ?? 0) * FPS);
 
 /** Frame within a scene where a phrase is spoken (proportional to its position in the line). */
 export function at(id: SceneId, phrase: string, offset = 0) {

@@ -56,6 +56,10 @@ The suggestion is worked out in order, and every step is shown to the specialist
 
 Conditions come from the drives: a weak night drive suggests daylight only, weak lane changes no highways, weak left turns or city driving staying within 15 miles of home. The specialist chooses the outcome; the score only suggests one. See `src/lib/score.ts` and `src/data/drives.ts`.
 
+## Simulator view
+
+The live drive is a 3D scene drawn with three.js (`src/sim/engine`). Each drive plays an 8-second highlight in its own place: an arterial with a signal (brake reaction), a residential all-way stop (right turns), a signalled left turn across oncoming traffic, a three-lane boulevard (lane changes), a country road (spotting objects) and downtown by day and by night. Everything on screen, the car, traffic, people and signals, is a function of drive time and the scenario's results, so the iPad and the full-screen simulator always agree, and the moments that matter (running a red, a collision, rolling a stop sign) happen when the scoring says they did. `dev/simlab.html` on the dev server renders single frames for checking a drive moment by moment.
+
 All people, places and records in the demo are fictional.
 
 ## Demo video
@@ -63,7 +67,7 @@ All people, places and records in the demo are fictional.
 `video/` is a Remotion project that renders a narrated walkthrough from real captures of the app (see `video/README.md`). With the dev server running on port 5181:
 
 ```bash
-cd video && node capture.mjs && npx remotion render src/index.ts DriverScoreDemo out/DriverScore-demo-draft-1.mp4 --codec h264 --crf 16
+cd video && node capture.mjs && npm run render
 ```
 
 The presenter's click path is in `DEMO.md`.

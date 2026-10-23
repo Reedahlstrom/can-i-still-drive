@@ -501,17 +501,20 @@ export function Assign() {
 
 // ---------------------------------------------------------------- 7. The drive
 
-// One short moment from each assigned drive, in drive time (8 s per drive at 1x).
-const clips = [
-  { len: 34, t0: 1.6 }, // brake reaction: the light turns red
-  { len: 34, t0: 8.9 }, // left turns across traffic
-  { len: 30, t0: 16.8 }, // lane changes
-  { len: 30, t0: 24.5 }, // spotting objects
-  { len: 46, t0: 32.9 }, // night drive with glare
-  { len: 30, t0: 40.4 }, // city drive
-].reduce<{ from: number; to: number; t0: number }[]>((acc, c) => {
-  const from = acc.length ? acc[acc.length - 1].to : 0;
-  return [...acc, { from, to: from + c.len, t0: c.t0 }];
+// One moment from each assigned drive: the part that shows what the drive tests.
+// t0 is seconds into that drive (each drive runs 8 s at 1x), len is seconds on screen.
+const CLIP_SPEC = [
+  { t0: 1.7, len: 2.5 }, // brake reaction: the light turns red, she brakes
+  { t0: 2.9, len: 3.0 }, // left turn: an oncoming car passes, then she turns across
+  { t0: 0.9, len: 2.3 }, // lane change: a glance over the shoulder, signal, move over
+  { t0: 2.2, len: 2.2 }, // spotting objects at the edge of vision
+  { t0: 3.0, len: 2.6 }, // night: oncoming glare, people at the curb
+  { t0: 2.9, len: 2.6 }, // city: a full stop while someone crosses
+];
+const XF = 10;
+export const clips = CLIP_SPEC.reduce<{ from: number; to: number; t0: number; index: number }[]>((acc, c, index) => {
+  const from = acc.length ? acc[acc.length - 1].to - XF : 0;
+  return [...acc, { from, to: from + Math.round(c.len * FPS), t0: index * 8 + c.t0, index }];
 }, []);
 
 export function Drive() {
@@ -533,19 +536,17 @@ export function Drive() {
   const s = s0 + (s1 - s0) * p;
   const x = x0 + (x1 - x0) * p;
   const y = y0 + (y1 - y0) * p;
-  // The iPad screenshot is from the last drive; its canvas carries on from the last full-screen clip.
+  // The iPad's canvas carries on from the last full-screen clip.
   const last = clips[clips.length - 1];
-  const simT = last.t0 + (last.to - last.from + 8 + Math.max(0, frame - pull)) / FPS;
+  const simT = last.t0 + (frame - last.from) / FPS;
   return (
     <Scene id="drive" drift={0}>
       {frame < pull + 10 &&
         clips.map((c, i) => {
-          if (frame < c.from - 8 || frame > c.to + 8) return null;
-          const o = Math.min(
-            interpolate(frame, [c.from - 8, c.from + 2], [i === 0 ? 1 : 0, 1], { extrapolateLeft: "clamp", extrapolateRight: "clamp" }),
-            interpolate(frame, [c.to - 2, c.to + 8], [1, i === clips.length - 1 ? 1 : 0], { extrapolateLeft: "clamp", extrapolateRight: "clamp" }),
-          );
-          const t = c.t0 + Math.max(0, frame - c.from + 8) / FPS;
+          if (frame < c.from || frame > c.to) return null;
+          // Each clip fades up over the one before it.
+          const o = i === 0 ? 1 : interpolate(frame, [c.from, c.from + XF], [0, 1], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
+          const t = c.t0 + (frame - c.from) / FPS;
           return (
             <AbsoluteFill key={i} style={{ opacity: o }}>
               <SimView t={t} width={1920} height={1080} />
@@ -561,12 +562,6 @@ export function Drive() {
           </IPad>
         </div>
       )}
-      <AbsoluteFill style={{ background: "radial-gradient(120% 90% at 50% 50%, rgba(0,0,0,0) 60%, rgba(0,0,0,0.35) 100%)", opacity: 1 - p }} />
-      <div style={{ position: "absolute", right: 70, top: 56, opacity: interpolate(frame, [pull - 8, pull + 6], [1, 0], { extrapolateLeft: "clamp", extrapolateRight: "clamp" }) }}>
-        <div style={{ background: "rgba(20,25,30,0.82)", borderRadius: 999, padding: "12px 28px" }}>
-          <Kicker delay={6} textColor="#fff">Six assigned drives</Kicker>
-        </div>
-      </div>
       {frame >= pull + 40 && <Callout text="Each score appears as its drive finishes" delay={pull + 44} style={{ left: x1 + 30, top: 1010 }} />}
     </Scene>
   );

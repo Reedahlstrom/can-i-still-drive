@@ -1,9 +1,11 @@
-import { useEffect } from "react";
-import { SimCanvas } from "../sim/SimCanvas";
+import { Suspense, lazy, useEffect } from "react";
+import { prepareDrives } from "../sim/prepare";
 import { driveLength, driveSeconds, useDriveClock } from "../sim/timeline";
 import { useDemo, useResults } from "../state/store";
 import { DriverScoreWordmark } from "../ui/Brand";
 import { SteeringWheel } from "../ui/Road";
+
+const SimCanvas = lazy(() => import("../sim/SimCanvas").then((m) => ({ default: m.SimCanvas })));
 
 export function SimulatorScreen() {
   const phase = useDemo((s) => s.phase);
@@ -18,6 +20,8 @@ export function SimulatorScreen() {
   const go = useDemo((s) => s.go);
   const t = useDriveClock(simStart, speed, length, 4);
   const isLive = scenario === "live";
+  // Build the assigned drives' scenes while the simulator waits, so the first frame is ready.
+  useEffect(() => (phase === "pre-drive" ? prepareDrives(assigned) : undefined), [phase, assigned]);
 
   useEffect(() => {
     // Read the clock fresh so a new drive never inherits the last drive's elapsed time.
@@ -40,14 +44,16 @@ export function SimulatorScreen() {
 
   return (
     <div className="h-full bg-asphalt">
-      <SimCanvas
-        simStart={simStart}
-        speed={speed}
-        assigned={assigned}
-        raw={raw}
-        liveReaction={{ live: isLive, measured: isLive ? live.reactionMs ?? null : null }}
-        onBrake={(ms) => setLive({ reactionMs: ms })}
-      />
+      <Suspense fallback={null}>
+        <SimCanvas
+          simStart={simStart}
+          speed={speed}
+          assigned={assigned}
+          raw={raw}
+          liveReaction={{ live: isLive, measured: isLive ? live.reactionMs ?? null : null }}
+          onBrake={(ms) => setLive({ reactionMs: ms })}
+        />
+      </Suspense>
     </div>
   );
 }

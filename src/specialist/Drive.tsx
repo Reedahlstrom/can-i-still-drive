@@ -1,20 +1,23 @@
 import { Check } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
-import { useEffect, useState } from "react";
+import { Suspense, lazy, useEffect, useState } from "react";
 import { patient } from "../data/demo";
 import { DRIVES, driveById } from "../data/drives";
-import { SimCanvas } from "../sim/SimCanvas";
+import { prepareDrives } from "../sim/prepare";
 import { SCORE_AT, driveEvents, driveLength, driveSeconds, hardStopAt, segmentAt, useDriveClock } from "../sim/timeline";
 import { useDemo, useResults, useScore } from "../state/store";
 import { HealthKeyLogo } from "../ui/Brand";
 import { Button } from "../ui/primitives";
 import { Card, Pane } from "./Shell";
 
+const SimCanvas = lazy(() => import("../sim/SimCanvas").then((m) => ({ default: m.SimCanvas })));
+
 export function DrivePrep() {
   const feeling = useDemo((s) => s.preDriveFeeling);
   const assigned = useDemo((s) => s.assigned);
   const go = useDemo((s) => s.go);
   const concern = feeling && feeling !== "I feel fine";
+  useEffect(() => prepareDrives(assigned), [assigned]);
   const minutes = DRIVES.filter((d) => assigned.includes(d.id)).reduce((a, d) => a + d.minutes, 0);
   return (
     <Pane
@@ -104,10 +107,13 @@ export function LiveDrive() {
 
   const stopDrive = () => {
     if (!confirmStop) return setConfirmStop(true);
+    // Read the clock now, not the last tick, so the stop matches what the simulator view just showed.
+    const s = useDemo.getState();
+    const now = segmentAt(driveSeconds(s.simStart, s.speed, driveLength(s.assigned.length)), s.assigned);
     // A drive whose score has already appeared counts as done; so does a hard stop already seen.
-    const finished = seg.local >= SCORE_AT;
-    const hs = hardStopAt(seg.id, raw);
-    go("post-drive", { drivesCompleted: finished ? seg.index + 1 : seg.index, hardStopSeen: !finished && hs !== null && seg.local >= hs });
+    const finished = now.local >= SCORE_AT;
+    const hs = hardStopAt(now.id, raw);
+    go("post-drive", { drivesCompleted: finished ? now.index + 1 : now.index, hardStopSeen: !finished && hs !== null && now.local >= hs });
   };
 
   const mins = Math.floor(t / 60);
@@ -134,14 +140,16 @@ export function LiveDrive() {
       }
     >
       <div className="overflow-hidden rounded-2xl bg-asphalt" style={{ aspectRatio: "16 / 7.6" }}>
-        <SimCanvas
-          simStart={simStart}
-          speed={speed}
-          assigned={assigned}
-          raw={raw}
-          liveReaction={{ live: isLive, measured: isLive ? liveReaction ?? null : null }}
-          onBrake={(ms) => setLive({ reactionMs: ms })}
-        />
+        <Suspense fallback={null}>
+          <SimCanvas
+            simStart={simStart}
+            speed={speed}
+            assigned={assigned}
+            raw={raw}
+            liveReaction={{ live: isLive, measured: isLive ? liveReaction ?? null : null }}
+            onBrake={(ms) => setLive({ reactionMs: ms })}
+          />
+        </Suspense>
       </div>
       <div className="mt-4 grid grid-cols-[1fr_1fr] gap-5">
         <Card title="Drives">

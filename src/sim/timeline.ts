@@ -2,22 +2,16 @@ import { useEffect, useState } from "react";
 import { driveById, sortDrives, type DriveId } from "../data/drives";
 import type { DriveRaw, DriveScore } from "../lib/score";
 
-// The simulator world is one long road. Each drive owns an 8-second stretch of it (at 1x);
-// an assigned set of drives plays those stretches back to back.
+// Each drive plays an 8-second stretch (at 1x) in its own simulator scene; an assigned set of
+// drives plays back to back.
 export const SEG = 8;
 
-// Moments in world time (seconds from the start of the road).
-export const LIGHT_RED_AT = 2.2;
-export const STOP_AT = 3.4;
-export const GO_AT = 5.0;
-export const RIGHT_TURNS = [9.2, 11.7, 14.2];
-export const LEFT_TURNS = [17.2, 19.7, 22.2];
-export const LANE_CHANGES = [25.0, 27.6, 30.2];
-export const FOD_TARGETS = [32.7, 33.55, 34.4, 35.25, 36.1, 36.95, 37.8, 38.65];
-export const NIGHT_HAZARDS = [41.2, 42.7, 44.2, 45.7, 47.0];
-export const TURN_LEN = 1.4;
-export const CRASH_AT = LEFT_TURNS[1] + 0.7;
-export const CITY_STOP_AT = 44.2;
+// Moments within a drive, in seconds from that drive's start.
+export const REACTION = { yellow: 1.4, red: 2.2, green: 6.3, /** When running the red, the car crosses the stop line. */ ranRed: 3.6 };
+export const LEFT_CRASH = 4.4;
+export const CITY_STOP = 4.2;
+export const FOD_TARGETS = [0.7, 1.55, 2.4, 3.25, 4.1, 4.95, 5.8, 6.65];
+export const NIGHT_HAZARDS = [1.2, 2.7, 4.2, 5.7, 7.0];
 /** Seconds into a drive when its score is published; stopping after this counts the drive as done. */
 export const SCORE_AT = SEG - 0.2;
 
@@ -55,9 +49,9 @@ export type DriveEvent = { at: number; text: string; points?: string; alert?: bo
 
 /** Seconds into a drive when its hard-stop event happens, if these results contain one. */
 export function hardStopAt(id: DriveId, raw: DriveRaw): number | null {
-  if (id === "reaction" && raw.reaction.ranRed) return LIGHT_RED_AT + 1.4 - driveById.reaction.world;
-  if (id === "left" && raw.left.collision) return CRASH_AT - driveById.left.world;
-  if (id === "city" && raw.city.ranStop) return CITY_STOP_AT - driveById.city.world;
+  if (id === "reaction" && raw.reaction.ranRed) return REACTION.ranRed;
+  if (id === "left" && raw.left.collision) return LEFT_CRASH;
+  if (id === "city" && raw.city.ranStop) return CITY_STOP;
   return null;
 }
 

@@ -306,7 +306,7 @@ export function SimView({ t, width, height, style }: { t: number; width: number;
   useLayoutEffect(() => {
     const c = ref.current!;
     const ctx = c.getContext("2d")!;
-    renderSim(ctx, c.width, c.height, t, ASSIGNED, presets.clear, { live: false, measured: null });
+    renderSim(ctx, c.width, c.height, t, ASSIGNED, presets.clear, { live: false, measured: null }, { maxPixels: 3_400_000 });
   }, [t]);
   return <canvas ref={ref} width={width * 2} height={height * 2} style={{ width, height, display: "block", ...style }} />;
 }
