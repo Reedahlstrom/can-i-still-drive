@@ -12,10 +12,10 @@ import { Lead, Meta, Screen, Title } from "./Screen";
 
 export function Home() {
   const set = useDemo((s) => s.set);
-  const bring = ["Your glasses and hearing aids", "Your driver's license", "A ride home, just in case"];
+  const bring = ["Someone who can drive you home. If Dana says to pause driving, that starts today.", "Your glasses and hearing aids", "Your driver's license"];
   return (
     <Screen
-      speech={`Your driving assessment is today at ${visit.time}, at ${visit.place}, ${visit.unit}, with ${specialist.name}, a driving specialist. It takes about 2 hours. Bring your glasses, hearing aids and driver's license, and plan a ride home just in case.`}
+      speech={`Your driving assessment is today at ${visit.time}, at ${visit.place}, ${visit.unit}, with ${specialist.name}, a driving specialist. It takes about 2 hours. Bring someone who can drive you home, because if Dana says to pause driving, that starts today. Bring your glasses, hearing aids and driver's license.`}
       footer={<Button onClick={() => set({ patientStep: "where" })}>I'm here</Button>}
     >
       <Meta>Driving assessment</Meta>
@@ -142,7 +142,7 @@ const visitSteps: { label: string; from: Phase; done: Phase }[] = [
   { label: "Go over results", from: "post-drive", done: "released" },
 ];
 
-function statusFor(phase: Phase) {
+function statusFor(phase: Phase, unwell: boolean) {
   switch (phase) {
     case "checked-in":
       return { title: "You're checked in", lead: `${specialist.first} will meet you in Room 204.` };
@@ -153,7 +153,7 @@ function statusFor(phase: Phase) {
     case "hands-on":
       return { title: "Hands-on checks", lead: `${specialist.first} will check your vision, memory and movement.` };
     case "pre-drive":
-      return { title: "Simulator drive next", lead: `${specialist.first} will help you adjust the seat and mirrors.` };
+      return { title: "Simulator drive next", lead: unwell ? `${specialist.first} will check on you before you start.` : `${specialist.first} will help you adjust the seat and mirrors.` };
     default:
       return { title: `${specialist.first} is reviewing your results`, lead: "You'll go over them together in a few minutes." };
   }
@@ -161,7 +161,8 @@ function statusFor(phase: Phase) {
 
 export function VisitStatus() {
   const phase = useDemo((s) => s.phase);
-  const { title, lead } = statusFor(phase);
+  const unwell = useDemo((s) => !!s.preDriveFeeling && s.preDriveFeeling !== "I feel fine");
+  const { title, lead } = statusFor(phase, unwell);
   const reviewing = atLeast(phase, "post-drive");
   return (
     <Screen speech={`${title}. ${lead}`}>
@@ -209,10 +210,10 @@ export function PreDrive() {
   const [v, setV] = useState<string | undefined>();
   const options = ["I feel fine", "A little dizzy or queasy", "Tired"];
   return (
-    <Screen speech={`Before you drive. How do you feel right now? If you're not feeling well, ${specialist.first} can wait. ${options.join(". ")}.`} footer={<Button disabled={!v} onClick={() => set({ preDriveFeeling: v })}>Continue</Button>}>
+    <Screen speech={`Before you drive. How do you feel right now? Your answer doesn't count toward your result. If you're not feeling well, ${specialist.first} will wait. ${options.join(". ")}.`} footer={<Button disabled={!v} onClick={() => set({ preDriveFeeling: v })}>Continue</Button>}>
       <Meta className="mb-3">Before you drive</Meta>
       <Title>How do you feel right now?</Title>
-      <Lead>If you're not feeling well, {specialist.first} can wait.</Lead>
+      <Lead>Your answer doesn't count toward your result. If you're not feeling well, {specialist.first} will wait.</Lead>
       <div className="mt-7">
         <ChoiceList options={options} value={v} onChange={(x) => setV(x as string)} />
       </div>
@@ -229,13 +230,13 @@ export function Driving() {
     if (t >= DRIVE && useDemo.getState().phase === "driving") go("post-drive");
   }, [t, go]);
   return (
-    <Screen tone="dark" speech={`You're driving. Say stop any time and ${specialist.first} will pause the drive.`}>
+    <Screen tone="dark" speech={`You're driving. ${specialist.first} is right beside you. Say stop any time.`}>
       <div className="flex h-full flex-col justify-center pb-10">
         <div className="flex justify-center">
           <RoadLoader width={280} light />
         </div>
         <h1 className="mt-10 font-display text-[36px] leading-tight font-extrabold">You're driving</h1>
-        <p className="mt-4 text-[20px] leading-relaxed text-white/75">Say "stop" any time and {specialist.first} will pause the drive.</p>
+        <p className="mt-4 text-[20px] leading-relaxed text-white/75">{specialist.first} is right beside you. Say "stop" any time.</p>
       </div>
     </Screen>
   );

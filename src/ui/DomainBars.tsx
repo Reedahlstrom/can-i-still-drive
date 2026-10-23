@@ -17,8 +17,8 @@ export function DomainBars({ domains, patient = false, delay = 0.4 }: { domains:
               <span className={`font-display font-bold tnum ${patient ? "text-[19px]" : "text-[16px]"}`}>
                 {d.max ? (
                   <>
-                    {fmt(d.points)}
-                    <span className="font-normal text-graphite"> of {d.max}</span>
+                    {patient ? Math.round(d.points) : fmt(d.points)}
+                    <span className="font-normal text-graphite"> of {patient ? Math.round(d.max) : d.max}</span>
                   </>
                 ) : (
                   <span className="font-normal text-graphite">Not completed</span>

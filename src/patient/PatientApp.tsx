@@ -122,15 +122,15 @@ export function PatientApp() {
               )}
             </div>
             <div className="flex shrink-0 items-center gap-1">
-              <button onClick={cycleText} aria-label={`Text size ${Math.round(textScale * 100)} percent`} className="flex h-14 w-14 flex-col items-center justify-center gap-0.5 rounded-xl hover:bg-mist">
-                <span className="font-display font-bold leading-none" style={{ fontSize: 17 + (textScale - 1) * 20 }}>
+              <button onClick={cycleText} aria-label={`Text size ${Math.round(textScale * 100)} percent`} className="flex h-[60px] w-[74px] flex-col items-center justify-center gap-0.5 rounded-xl hover:bg-mist">
+                <span className="font-display font-bold leading-none" style={{ fontSize: 18 + (textScale - 1) * 20 }}>
                   Aa
                 </span>
-                <span className="text-[12px] font-semibold text-graphite">Text</span>
+                <span className="text-[15px] leading-tight font-semibold text-graphite">Text size</span>
               </button>
-              <button onClick={toggleSpeech} aria-label={speaking ? "Stop reading" : "Read aloud"} aria-pressed={speaking} className={`flex h-14 w-14 flex-col items-center justify-center gap-0.5 rounded-xl ${speaking ? "bg-asphalt text-white" : "hover:bg-mist"}`}>
+              <button onClick={toggleSpeech} aria-label={speaking ? "Stop reading" : "Read aloud"} aria-pressed={speaking} className={`flex h-[60px] w-[62px] flex-col items-center justify-center gap-0.5 rounded-xl ${speaking ? "bg-asphalt text-white" : "hover:bg-mist"}`}>
                 {speaking ? <VolumeX size={22} /> : <Volume2 size={22} />}
-                <span className={`text-[12px] font-semibold ${speaking ? "text-white" : "text-graphite"}`}>{speaking ? "Stop" : "Listen"}</span>
+                <span className={`text-[15px] leading-tight font-semibold ${speaking ? "text-white" : "text-graphite"}`}>{speaking ? "Stop" : "Listen"}</span>
               </button>
             </div>
           </header>

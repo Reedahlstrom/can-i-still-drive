@@ -25,8 +25,14 @@ function DomainRow({ d }: { d: Domain }) {
         <span className={`h-2 flex-1 overflow-hidden rounded-full ${low ? "bg-alert-tint" : "bg-mist"}`}>
           <span className={`block h-full rounded-full ${low ? "bg-alert" : "bg-asphalt"}`} style={{ width: `${d.max ? (d.points / d.max) * 100 : 0}%` }} />
         </span>
-        <span className="w-20 text-right font-display text-[16px] font-bold tnum">
-          {fmt(d.points)} <span className="font-normal text-graphite">/ {d.max}</span>
+        <span className="w-28 text-right font-display text-[16px] font-bold tnum">
+          {d.max ? (
+            <>
+              {fmt(d.points)} <span className="font-normal text-graphite">/ {fmt(d.max)}</span>
+            </>
+          ) : (
+            <span className="font-sans text-[14px] font-normal text-graphite">Not completed</span>
+          )}
         </span>
         <ChevronDown size={18} className={`text-graphite transition-transform ${open ? "rotate-180" : ""}`} />
       </button>
@@ -150,7 +156,7 @@ export function ReviewSign() {
   const pickOutcome = (o: Outcome) => {
     const edited = d.outcome ? d.note !== outcomeCopy[d.outcome].note : d.note.trim() !== "";
     const next = determinationFor(o);
-    set({ determination: { ...next, note: edited ? d.note : next.note, reasoning: d.reasoning, signature: null } });
+    set({ determination: { ...next, note: edited ? d.note : next.note, noteFor: edited ? (d.noteFor ?? d.outcome) : o, reasoning: d.reasoning, signature: null } });
   };
   const toggle = (list: string[], v: string) => (list.includes(v) ? list.filter((x) => x !== v) : [...list, v]);
 
@@ -292,7 +298,10 @@ export function ReviewSign() {
 
               <h2 className={`mt-6 ${label}`}>Note to {patient.first}</h2>
               <p className="text-[13px] text-graphite">She sees this under your name.</p>
-              <textarea value={d.note} onChange={(e) => update({ note: e.target.value })} rows={5} className="mt-2 w-full resize-none rounded-xl border-2 border-line bg-canvas px-3.5 py-3 text-[15px] leading-snug outline-none focus:border-asphalt" />
+              {d.noteFor && d.noteFor !== d.outcome && (
+                <p className="mt-1 rounded-lg bg-signal-soft px-3 py-2 text-[13px] font-semibold text-signal-ink">Written for {outcomeCopy[d.noteFor].label}. Reread before signing.</p>
+              )}
+              <textarea value={d.note} onChange={(e) => update({ note: e.target.value, noteFor: d.outcome })} rows={5} className="mt-2 w-full resize-none rounded-xl border-2 border-line bg-canvas px-3.5 py-3 text-[15px] leading-snug outline-none focus:border-asphalt" />
 
               <h2 className={`mt-5 ${label}`}>Reasoning for the record</h2>
               <p className="text-[13px] text-graphite">
@@ -308,6 +317,7 @@ export function ReviewSign() {
             <div className="mb-3 text-[14px] leading-snug">
               <span className="text-graphite">{patient.first} will see: </span>
               <span className="font-semibold">{outcomeCopy[d.outcome].title}</span>
+              <span className="text-graphite"> Then your note, next steps, and DriverScore {result.total} with four section scores.</span>
             </div>
           )}
           {needsTalk && (

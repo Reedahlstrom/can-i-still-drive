@@ -107,15 +107,17 @@ export function Segmented<T extends string | number>({
   onChange,
   label,
   size = "md",
+  wrap = false,
 }: {
   options: { value: T; label: string }[];
   value: T;
   onChange: (v: T) => void;
   label: string;
   size?: "md" | "sm";
+  wrap?: boolean;
 }) {
   return (
-    <div role="radiogroup" aria-label={label} className="inline-flex rounded-xl bg-mist p-1">
+    <div role="radiogroup" aria-label={label} className={`inline-flex rounded-xl bg-mist p-1 ${wrap ? "flex-wrap" : ""}`}>
       {options.map((o) => {
         const on = o.value === value;
         return (

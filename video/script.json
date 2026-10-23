@@ -1,0 +1,16 @@
+[
+  {"id": "open", "text": "Every year, millions of older drivers, and the families who love them, face the same question. Can I still drive?"},
+  {"id": "problem", "text": "In the United States, fifty-two million licensed drivers are sixty-five or older. Yet only a few hundred certified driver rehabilitation specialists serve the whole country. And the evidence that matters is scattered: in the doctor's notes, at the pharmacy, in last year's eye exam."},
+  {"id": "solution", "text": "DriverScore brings it together, as part of a doctor's visit. A driving simulator, a few short clinical tests, and the patient's own health record, in one place. A driving specialist reviews everything, and signs the result."},
+  {"id": "home", "text": "It starts at home. Margaret confirms her details, then connects her health record through HealthKey. She chooses exactly what to share, and only her specialist and her doctor can see it. Four short questions about her driving, and she's ready."},
+  {"id": "checkin", "text": "At the hospital, she taps I'm here, and picks the simulator that's ready for her. On the specialist's iPad, Margaret appears, with her record and her answers already waiting. What matters most comes first: a new sleep medicine, a cataract, a close call."},
+  {"id": "tests", "text": "Margaret takes a few short tests on the iPad: connecting circles, drawing a clock, matching road signs, naming colors. Then the specialist scores vision, memory, and movement, one tap at a time."},
+  {"id": "drive", "text": "Then, the drive. Six scored scenarios: reaction time, right turns, left turns, lane changes, spotting objects, and a drive through town. Every result streams live to the specialist."},
+  {"id": "record", "text": "When the drive ends, every result is saved to Margaret's health record, each with its source and time."},
+  {"id": "review", "text": "Now the specialist reviews it all. DriverScore suggests an outcome, but the specialist decides. She chooses, writes a note in plain words, and signs."},
+  {"id": "clear", "text": "Margaret's result arrives on her phone. She's clear to drive. Her next steps say exactly who does what, and when she'll be tested again."},
+  {"id": "stop", "text": "When the news is harder, it's shared in person first. Then the app leads with how she'll get around: a ride with her daughter, a taxi by phone, a senior shuttle, or a self-driving car."},
+  {"id": "outcomes", "text": "There are four outcomes. Clear. Drive with conditions. Pause and reassess. And time to stop. Each one comes with a plan."},
+  {"id": "trust", "text": "The specialist always decides. Margaret controls her data. Her result goes to her and her doctor. It's never sent to the DMV on its own, and her records are never sold."},
+  {"id": "close", "text": "DriverScore. A clear answer, and a plan, for every driver."}
+]

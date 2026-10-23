@@ -80,7 +80,7 @@ export function RecordTab() {
         <SectionLabel>Driving assessments</SectionLabel>
         <Group>
           {released && d?.outcome ? (
-            <Row name={recordTitle[d.outcome]} detail={`Decided by ${specialist.name}, driving specialist`} meta={`DriverScore ${result.total}. Lakeview Medical Center, ${shortDate(today())}`} />
+            <Row name={recordTitle[d.outcome]} detail={`Decided by ${specialist.name}, driving specialist`} meta={`Lakeview Medical Center, ${shortDate(today())}. DriverScore ${result.total}, one part of ${specialist.first}'s decision.`} />
           ) : inVisit ? (
             <Row name="Assessment in progress" detail="Your result appears after your specialist signs." meta={`Lakeview Medical Center, ${shortDate(today())}`} />
           ) : (
@@ -108,10 +108,12 @@ export function RecordTab() {
         <Group>
           <div className="flex items-center justify-between gap-4 px-5 py-4">
             <div>
-              <div className="text-[19px] font-semibold">Share with DriverScore</div>
-              <div className="text-[17px] leading-snug text-graphite">{hkSharing ? "Your driving specialist can see what you chose to share." : "Sharing is off."}</div>
+              <div className="text-[19px] font-semibold">Share with {specialist.first} and Dr. Patel</div>
+              <div className="text-[17px] leading-snug text-graphite">
+                {hkSharing ? "Only they see what you chose. Turn this off any time. Your signed result stays in your record." : `Off. ${specialist.first} and Dr. Patel can't see your record.`}
+              </div>
             </div>
-            <Toggle tone="hk" label="Share with DriverScore" on={hkSharing} onChange={(v) => set({ hkSharing: v })} />
+            <Toggle tone="hk" label={`Share with ${specialist.first} and Dr. Patel`} on={hkSharing} onChange={(v) => set({ hkSharing: v })} />
           </div>
         </Group>
       </section>
@@ -122,10 +124,7 @@ export function RecordTab() {
 export function FamilyTab() {
   const familyShare = useDemo((s) => s.familyShare);
   const set = useDemo((s) => s.set);
-  const perms = [
-    { id: "results", label: "Results and plan" },
-    { id: "rides", label: "Ride requests" },
-  ];
+  const perms = [{ id: "results", label: `Send ${family.first} my result and plan` }];
   return (
     <Screen speech={`Family. You choose what ${family.name} can see.`}>
       <Title className="pt-1">Family</Title>
@@ -133,8 +132,8 @@ export function FamilyTab() {
         <Avatar initials={family.initials} size={56} tone="signal" />
         <div>
           <div className="text-[21px] font-semibold">{family.name}</div>
-          <div className="text-[17px] text-graphite">
-            {family.relation}. Gets texts at {family.phone}.
+          <div className="text-[17px] leading-snug text-graphite">
+            {family.relation}, {family.phone}
           </div>
         </div>
       </div>

@@ -99,7 +99,7 @@ export const record: Record<"conditions" | "medicines" | "eyes" | "visits" | "la
     { name: "Eye exam", detail: "Right 20/25, left 20/30", source: "Granite Eye Associates", date: "Feb 2, 2025" },
   ],
   visits: [
-    { name: "Annual wellness visit", detail: "Daughter raised driving concern. Referred for driving assessment.", source: "Dr. Anika Patel", date: "Oct 6, 2026" },
+    { name: "Annual wellness visit", detail: "Talked about driving. Referred for a driving assessment.", source: "Dr. Anika Patel", date: "Oct 6, 2026" },
     { name: "Follow-up, blood pressure", detail: "No changes", source: "Dr. Anika Patel", date: "Jun 18, 2026" },
   ],
   labs: [{ name: "Hemoglobin A1C", detail: "6.9%", source: "Lakeview Health", date: "Aug 2026" }],
@@ -144,7 +144,15 @@ export const defaultAnswers: Record<string, string | string[]> = {
   places: ["Doctor visits", "Grocery store", "Church", "Family"],
 };
 
+export const offices = {
+  patel: "(801) 555-0100",
+  granite: "(801) 555-0130",
+  dana: "(801) 555-0204",
+  cab: "(801) 555-0177",
+};
+
 export const destinations: Record<string, { name: string; address: string; mins: number }> = {
+  Home: { name: "Home", address: "1450 E Maple St", mins: 10 },
   "Doctor visits": { name: "Lakeview Medical Center", address: "1200 E Lakeview Dr", mins: 12 },
   "Grocery store": { name: "Hillside Market", address: "3270 S 1300 E", mins: 8 },
   Church: { name: "First Community Church", address: "455 E 2700 S", mins: 6 },

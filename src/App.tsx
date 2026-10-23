@@ -5,11 +5,11 @@ import { SpecialistApp } from "./specialist/SpecialistApp";
 import { SimulatorScreen } from "./stage/SimulatorScreen";
 import { Stage } from "./stage/Stage";
 
-type Route = "stage" | "phone" | "ipad" | "simulator";
+type Route = "stage" | "phone" | "ipad" | "simulator" | "capture-phone" | "capture-ipad";
 
 function readRoute(): Route {
   const h = location.hash.replace(/^#\/?/, "");
-  if (h === "phone" || h === "ipad" || h === "simulator" || h === "stage") return h;
+  if (h === "phone" || h === "ipad" || h === "simulator" || h === "stage" || h === "capture-phone" || h === "capture-ipad") return h;
   return window.innerWidth < 760 ? "phone" : "stage";
 }
 
@@ -30,6 +30,17 @@ export default function App() {
         {route === "phone" && <PatientApp />}
         {route === "ipad" && <SpecialistApp />}
         {route === "simulator" && <SimulatorScreen />}
+        {/* Device screens at exact size, with the insets a real device frame leaves. Used to capture footage. */}
+        {route === "capture-phone" && (
+          <div style={{ width: 393, height: 852, "--safe-top": "54px", "--safe-bottom": "26px" } as CSSProperties} className="relative overflow-hidden">
+            <PatientApp />
+          </div>
+        )}
+        {route === "capture-ipad" && (
+          <div style={{ width: 1180, height: 820, "--safe-top": "24px", "--safe-bottom": "16px" } as CSSProperties} className="relative overflow-hidden">
+            <SpecialistApp />
+          </div>
+        )}
       </div>
     </MotionConfig>
   );

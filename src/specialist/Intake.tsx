@@ -106,12 +106,19 @@ export function RecordReview() {
   const answers = useDemo((s) => s.answers);
   const shared = useSharedRecord();
   const hk = shared.on;
+  const reviewing = useDemo((s) => s.determination !== null);
   const attention = useAttention();
   return (
     <Pane
       title={`${patient.first} ${patient.last}`}
       sub={`${patient.age}, born ${patient.dob}. Referred by ${referringDoctor.name}: ${visit.reason.toLowerCase()}.`}
-      actions={<Button size="md" onClick={() => go("tablet-tests", { tabletStep: "handoff" })}>Start tablet tests</Button>}
+      actions={
+        reviewing ? (
+          <Button size="md" onClick={() => go("review")}>Back to review</Button>
+        ) : (
+          <Button size="md" onClick={() => go("tablet-tests", { tabletStep: "handoff" })}>Start tablet tests</Button>
+        )
+      }
     >
       <div className="grid grid-cols-[1.25fr_1fr] gap-5">
         <div className="flex flex-col gap-5">

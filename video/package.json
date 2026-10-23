@@ -1,0 +1,19 @@
+{
+  "name": "driverscore-video",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "capture": "node capture.mjs",
+    "studio": "remotion studio src/index.ts",
+    "render": "remotion render src/index.ts DriverScoreDemo out/DriverScore-demo-draft-1.mp4 --codec h264 --crf 16"
+  },
+  "dependencies": {
+    "@fontsource-variable/atkinson-hyperlegible-next": "^5.3.0",
+    "@fontsource-variable/overpass": "^5.3.0",
+    "@remotion/cli": "^4.0.538",
+    "@remotion/media-utils": "^4.0.538",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1",
+    "remotion": "^4.0.538"
+  }
+}

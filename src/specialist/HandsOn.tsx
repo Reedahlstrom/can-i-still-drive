@@ -15,7 +15,7 @@ function ItemRow({ label, hint, stack = false, children }: { label: string; hint
         <div className="text-[16px] font-semibold leading-snug">{label}</div>
         {hint && <div className="text-[13px] text-graphite">{hint}</div>}
       </div>
-      <div className="shrink-0">{children}</div>
+      <div className={stack ? "min-w-0" : "shrink-0"}>{children}</div>
     </div>
   );
 }
@@ -39,6 +39,7 @@ export function HandsOn() {
   const go = useDemo((s) => s.go);
   const raw = useRaw();
   const isLive = scenario === "live";
+  const reviewing = useDemo((s) => s.determination !== null);
   const result = useScore();
   const dom = Object.fromEntries(result.domains.map((d) => [d.id, d]));
   const put = <K extends keyof Raw>(k: K, v: Raw[K]) => set({ handsOn: { ...handsOn, [k]: v } });
@@ -52,7 +53,7 @@ export function HandsOn() {
     <Pane
       title="Hands-on checks"
       sub={`Score as you go. ${patient.first}'s tablet results are already in.`}
-      actions={<Button size="md" onClick={() => go("pre-drive")}>Continue to simulator</Button>}
+      actions={reviewing ? <Button size="md" onClick={() => go("review")}>Back to review</Button> : <Button size="md" onClick={() => go("pre-drive")}>Continue to simulator</Button>}
     >
       <div className="grid grid-cols-2 gap-5">
         <div className="flex flex-col gap-5">
@@ -83,7 +84,7 @@ export function HandsOn() {
                 />
               </ItemRow>
               <ItemRow stack label="Visual fields" hint="Confrontation, each eye">
-                <Segmented size="sm" label="Fields" value={raw.fields} onChange={(v) => put("fields", v)} options={fieldOptions.map((f) => ({ value: f.value, label: f.label }))} />
+                <Segmented size="sm" wrap label="Fields" value={raw.fields} onChange={(v) => put("fields", v)} options={fieldOptions.map((f) => ({ value: f.value, label: f.label }))} />
               </ItemRow>
             </div>
           </Card>

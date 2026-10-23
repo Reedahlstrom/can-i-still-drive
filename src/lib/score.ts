@@ -11,7 +11,7 @@ export const fieldOptions = [
   { value: 7, label: "Full" },
   { value: 5, label: "1 quadrant" },
   { value: 3, label: "2+ quadrants" },
-  { value: 1, label: "Both eyes" },
+  { value: 1, label: "Loss in both eyes" },
   { value: 0, label: "Hemianopia" },
 ] as const;
 
@@ -43,6 +43,7 @@ export type Raw = {
   collision: boolean;
   missedSignal: boolean;
   completedDrives?: number; // 0-6; undefined means all six were driven
+  collisionSeen?: boolean; // a collision happened before the drive was stopped
 };
 
 export type Item = { id: string; label: string; points: number; max: number; raw: string; done: boolean };
@@ -169,10 +170,12 @@ export function score(r: Raw): ScoreResult {
   const total = Math.round(sum(domains.map((d) => d.points)));
   const possible = Math.round(sum(domains.map((d) => d.max)));
   const incomplete = possible < 100;
-  const missing = [...cognitionItems, ...simulator].filter((i) => !i.done).map((i) => i.label.toLowerCase());
+  const missingTablet = cognitionItems.filter((i) => !i.done).map((i) => (i.id === "trails" ? "Trails" : i.label));
+  const missingDrives = simulator.filter((i) => !i.done).length;
+  const missing = [...missingTablet, ...(missingDrives ? [`${missingDrives} of 6 drives`] : [])];
 
   const findings: Finding[] = [];
-  const collisionCounts = r.collision && driven > 2;
+  const collisionCounts = r.collision && (driven > 2 || !!r.collisionSeen);
   if (acuityIndex(r.acuity) > acuityIndex("20/100")) findings.push({ kind: "hardStop", text: `Acuity ${r.acuity} both eyes, worse than 20/100` });
   if (r.fields === 0) findings.push({ kind: "hardStop", text: "Hemianopia: half the visual field missed in both eyes" });
   if (r.trailsSeconds === null) findings.push({ kind: "hardStop", text: `${trailsLabel} not finished` });
@@ -180,8 +183,10 @@ export function score(r: Raw): ScoreResult {
   if (r.missedSignal) findings.push({ kind: "hardStop", text: "Missed a red light or stop sign" });
   if (driven < 6) findings.push({ kind: "flag", text: `Drive stopped after ${driven} of 6 drives` });
   if (incomplete) findings.push({ kind: "flag", text: `Not completed: ${missing.join(", ")}. Score is out of ${possible}.` });
+  const thin = possible < 80;
   if (acuityIndex(r.acuity) > acuityIndex("20/40") && acuityIndex(r.acuity) <= acuityIndex("20/100")) findings.push({ kind: "flag", text: `Acuity ${r.acuity} both eyes, worse than 20/40` });
-  if (acuityIndex(r.worseEye) > acuityIndex("20/40")) findings.push({ kind: "flag", text: `Worse eye ${r.worseEye}, worse than 20/40` });
+  if (r.fields >= 1 && r.fields <= 3) findings.push({ kind: "flag", text: `Visual field loss: ${fieldLabel(r.fields).toLowerCase()}` });
+  if (acuityIndex(r.worseEye) > acuityIndex("20/100")) findings.push({ kind: "flag", text: `Worse eye ${r.worseEye}: effectively one-eyed, check depth and fields` });
   if (r.moca <= 18) findings.push({ kind: "flag", text: `MoCA ${r.moca}, at or below 18` });
   if (typeof r.trailsSeconds === "number" && !r.trailsShort && r.trailsSeconds > 180) findings.push({ kind: "flag", text: `Trails B ${r.trailsSeconds} s, over 180` });
 
@@ -192,7 +197,8 @@ export function score(r: Raw): ScoreResult {
     // Poor acuity alone is often treatable (cataract, new glasses), so it suggests a pause.
     const acuityOnly = hardStops.every((f) => f.text.startsWith("Acuity"));
     suggested = acuityOnly ? "pause" : "stop";
-  } else if (pct >= 85 && findings.length === 0) suggested = "clear";
+  } else if (thin) suggested = "pause"; // too little evidence to clear or set limits
+  else if (pct >= 85 && findings.length === 0) suggested = "clear";
   else if (pct >= 70) suggested = "conditions";
   else if (pct >= 55) suggested = "pause";
   else suggested = "stop";

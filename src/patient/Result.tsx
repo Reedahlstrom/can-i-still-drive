@@ -1,7 +1,7 @@
 import { Bus, CalendarPlus, Car, CarFront, Check, ChevronRight, MapPin, Phone, Share2, Users } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { useEffect, useState, type ReactNode } from "react";
-import { destinations, family, home, referringDoctor, specialist } from "../data/demo";
+import { destinations, family, home, locations, offices, referringDoctor, specialist } from "../data/demo";
 import { outcomeCopy, planDetail } from "../data/scenarios";
 import { addMonths, longDate, shortDate, today } from "../lib/dates";
 import { useDemo, useScore, type Ride } from "../state/store";
@@ -78,25 +78,28 @@ function ShareWithFamily() {
   const set = useDemo((s) => s.set);
   const shared = familyShare.results;
   return (
-    <Button
-      variant={shared ? "secondary" : "primary"}
-      className="mt-9 w-full"
-      icon={shared ? <Check size={20} strokeWidth={3} /> : <Share2 size={20} />}
-      onClick={() => set({ familyShare: { ...familyShare, results: !shared } })}
-    >
-      {shared ? `${family.first} can see this` : `Let ${family.first} see this`}
-    </Button>
+    <div className="mt-9">
+      <Button
+        variant={shared ? "secondary" : "primary"}
+        className="w-full"
+        icon={shared ? <Check size={20} strokeWidth={3} /> : <Share2 size={20} />}
+        onClick={() => !shared && set({ familyShare: { ...familyShare, results: true } })}
+      >
+        {shared ? `Sent to ${family.first}` : `Text this to ${family.first}`}
+      </Button>
+      {shared && <p className="mt-2 text-center text-[17px] text-graphite">You can stop this in Family.</p>}
+    </div>
   );
 }
 
 type RideOption = { id: string; icon: ReactNode; name: string; detail: string; cta: string; paid?: string };
 
 const rideOptions: RideOption[] = [
-  { id: "family", icon: <Users size={24} />, name: `Ride with ${family.first}`, detail: `Sends ${family.first} a text. She'll reply.`, cta: `Text ${family.first}` },
-  { id: "taxi", icon: <Phone size={24} />, name: "Taxi by phone", detail: "About $18. No app needed.", cta: "Call a taxi", paid: "Pay the driver" },
-  { id: "shuttle", icon: <Bus size={24} />, name: "Senior shuttle", detail: "Free. Book a day ahead.", cta: "Book the shuttle" },
-  { id: "app", icon: <Car size={24} />, name: "Uber", detail: "About $14, 5 minutes away", cta: "Request Uber, about $14", paid: "Visa ending 4242" },
-  { id: "self", icon: <CarFront size={24} />, name: "Self-driving car", detail: "About $12, 7 minutes away", cta: "Request a car, about $12", paid: "Visa ending 4242" },
+  { id: "family", icon: <Users size={24} />, name: `Ride with ${family.first}`, detail: `Texts ${family.first} to ask. Her answer shows up here.`, cta: `Text ${family.first}` },
+  { id: "taxi", icon: <Phone size={24} />, name: "Taxi by phone", detail: "Valley Cab. About $18. No app needed.", cta: "Call Valley Cab" },
+  { id: "shuttle", icon: <Bus size={24} />, name: "Senior shuttle", detail: "Free. Book a day ahead.", cta: "Ask for a shuttle ride" },
+  { id: "app", icon: <Car size={24} />, name: "Uber", detail: "About $14, 5 minutes away", cta: "Request Uber, about $14", paid: "You pay in the Uber app." },
+  { id: "self", icon: <CarFront size={24} />, name: "Self-driving car", detail: "About $12, 7 minutes away", cta: "Request a car, about $12", paid: "You pay in the app." },
 ];
 
 function GettingAround() {
@@ -120,16 +123,13 @@ function GettingAround() {
 }
 
 function rideCopy(ride: NonNullable<Ride>, option: RideOption, destName: string) {
-  const later = ride.when === "later";
   switch (option.id) {
     case "family":
       return ride.status === "requested"
         ? { title: `Asked ${family.first}`, sub: "We'll tell you when she answers." }
-        : { title: `${family.first} can take you`, sub: `She'll pick you up ${later ? "at 2:15 PM" : "in 20 minutes"}. To ${destName}.` };
-    case "taxi":
-      return ride.status === "requested" ? { title: "Calling Valley Cab", sub: `To ${destName}` } : { title: "Your taxi is on the way", sub: `To ${destName}` };
+        : { title: `${family.first} said yes`, sub: `She'll text you when she leaves. To ${destName}.` };
     case "shuttle":
-      return { title: "Shuttle booked", sub: `Tomorrow at 9:00 AM from home. To ${destName}.` };
+      return { title: "Request sent", sub: `The shuttle office will call you to set a time. To ${destName}.` };
     default:
       return ride.status === "requested" ? { title: "Finding your ride", sub: `To ${destName}` } : { title: "Your ride is on the way", sub: `To ${destName}` };
   }
@@ -141,7 +141,11 @@ export function RideSheet() {
   const set = useDemo((s) => s.set);
   const speed = useDemo((s) => s.speed);
   const textScale = useDemo((s) => s.textScale);
-  const places = ((answers.places as string[] | undefined)?.length ? (answers.places as string[]) : ["Doctor visits", "Grocery store", "Family"]).filter((p) => destinations[p]);
+  const atVisit = useDemo((s) => s.phase === "released");
+  const chosen = (answers.places as string[] | undefined)?.length ? (answers.places as string[]) : ["Doctor visits", "Grocery store", "Family"];
+  // On visit day she is at the hospital, so home comes first and the hospital drops off the list.
+  const places = (atVisit ? ["Home", ...chosen.filter((p) => p !== "Doctor visits")] : chosen).filter((p) => destinations[p]);
+  const hospital = locations.find((l) => l.here)!;
   const option = rideOptions.find((o) => o.id === ride?.option) ?? rideOptions[0];
 
   useEffect(() => {
@@ -152,6 +156,7 @@ export function RideSheet() {
 
   const close = () => set({ ride: null });
   const destName = ride?.dest === "other" ? ride.other || "Your address" : ride?.dest ? destinations[ride.dest]?.name : "";
+  const from = atVisit && ride?.when === "now" ? `${hospital.name}, 1200 E Lakeview Dr` : `${home.label}, ${home.address}`;
   const ready = !!ride?.dest && (ride.dest !== "other" || !!ride.other?.trim());
   const request = () => ride && set({ ride: { ...ride, status: option.id === "shuttle" ? "arriving" : "requested" } });
 
@@ -169,7 +174,19 @@ export function RideSheet() {
             transition={{ type: "spring", stiffness: 260, damping: 32 }}
           >
             <div className="mx-auto mb-5 h-1.5 w-10 rounded-full bg-line" />
-            {ride.status === "choose" ? (
+            {option.id === "taxi" ? (
+              <>
+                <p className="text-[17px] font-semibold text-graphite">{option.name}</p>
+                <h2 className="mt-1 font-display text-[28px] font-extrabold">Call Valley Cab</h2>
+                <p className="mt-2 text-[18px] leading-snug text-graphite">Tell them where you are and where you're going. About $18 to most places nearby. Pay the driver.</p>
+                <a href={`tel:${offices.cab.replace(/\D/g, "")}`} className="mt-5 flex h-[60px] w-full items-center justify-center gap-2.5 rounded-2xl bg-asphalt text-[20px] font-semibold text-white">
+                  <Phone size={20} /> {offices.cab}
+                </a>
+                <Button variant="secondary" className="mt-3 w-full" onClick={close}>
+                  Close
+                </Button>
+              </>
+            ) : ride.status === "choose" ? (
               <>
                 <p className="text-[17px] font-semibold text-graphite">{option.name}</p>
                 <h2 className="mt-1 font-display text-[28px] font-extrabold">Where to?</h2>
@@ -217,7 +234,7 @@ export function RideSheet() {
                 <div className="mt-4 flex items-start gap-3 text-[17px] text-graphite">
                   <MapPin size={20} className="mt-0.5 shrink-0" />
                   <span>
-                    From {home.label}, {home.address}
+                    From {from}
                     {option.paid ? <><br />{option.paid}</> : null}
                   </span>
                 </div>
@@ -227,35 +244,38 @@ export function RideSheet() {
               </>
             ) : (
               <>
-                {option.id !== "family" && option.id !== "shuttle" && <RideMap arriving={ride.status === "arriving"} />}
+                {(option.id === "app" || option.id === "self") && <RideMap arriving={ride.status === "arriving"} />}
                 {(() => {
                   const c = rideCopy(ride, option, destName);
                   return (
                     <>
-                      <h2 className={`${option.id !== "family" && option.id !== "shuttle" ? "mt-5" : ""} font-display text-[28px] font-extrabold`}>{c.title}</h2>
+                      <h2 className={`${option.id === "app" || option.id === "self" ? "mt-5" : ""} font-display text-[28px] font-extrabold`}>{c.title}</h2>
                       <p className="mt-1 text-[18px] text-graphite">{c.sub}</p>
                     </>
                   );
                 })()}
                 {ride.status === "requested" && option.id === "family" && (
-                  <div className="mt-6 flex items-center gap-3 text-[17px] text-graphite">
-                    <motion.span className="block size-5 rounded-full border-[2.5px] border-asphalt border-t-transparent" animate={{ rotate: 360 }} transition={{ duration: 0.8, repeat: Infinity, ease: "linear" }} />
-                    Texted {family.phone}
+                  <div className="mt-5 rounded-2xl bg-paper px-5 py-4">
+                    <div className="flex items-center gap-2 text-[15px] font-semibold text-graphite">
+                      <motion.span className="block size-4 rounded-full border-2 border-asphalt border-t-transparent" animate={{ rotate: 360 }} transition={{ duration: 0.8, repeat: Infinity, ease: "linear" }} />
+                      Texted {family.first}, {family.phone}
+                    </div>
+                    <p className="mt-2 text-[18px] leading-snug">
+                      "{family.first === "Sarah" ? "Mom" : "Margaret"} asks for a ride to {destName}, {ride.when === "now" ? "now" : "later today"}. Reply YES or NO."
+                    </p>
                   </div>
                 )}
-                {ride.status === "arriving" && option.id !== "shuttle" && (
+                {ride.status === "arriving" && option.id !== "shuttle" && option.id !== "family" && (
                   <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="mt-5 flex items-center gap-4 rounded-2xl bg-paper px-5 py-4">
-                    <Avatar initials={option.id === "family" ? family.initials : option.id === "self" ? "SD" : option.id === "taxi" ? "VC" : "LM"} size={48} tone={option.id === "family" ? "signal" : "mist"} />
+                    <Avatar initials={option.id === "self" ? "SD" : "LM"} size={48} tone="mist" />
                     <div className="flex-1">
-                      <div className="text-[19px] font-semibold">{option.id === "family" ? family.name : option.id === "self" ? "Self-driving car" : option.id === "taxi" ? "Valley Cab 214" : "Luis M."}</div>
-                      <div className="text-[16px] text-graphite">{option.id === "family" ? "Replied by text" : option.id === "taxi" ? "Yellow sedan" : "White sedan, 7KD 214"}</div>
+                      <div className="text-[19px] font-semibold">{option.id === "self" ? "Self-driving car" : "Luis M."}</div>
+                      <div className="text-[16px] text-graphite">White sedan, 7KD 214</div>
                     </div>
-                    {option.id !== "family" && (
-                      <div className="text-right">
-                        <div className="font-display text-[24px] font-bold">{option.id === "taxi" ? 9 : 4}</div>
-                        <div className="text-[15px] text-graphite">min</div>
-                      </div>
-                    )}
+                    <div className="text-right">
+                      <div className="font-display text-[24px] font-bold">4</div>
+                      <div className="text-[15px] text-graphite">min</div>
+                    </div>
                   </motion.div>
                 )}
                 <Button variant="secondary" className="mt-5 w-full" onClick={close}>
@@ -347,7 +367,9 @@ export function Result() {
         <p className="text-[17px] leading-snug text-graphite">
           Signed by {specialist.name}, {specialist.plain}, {longDate(signed)}.
           <br />
-          Sent to you and {referringDoctor.name}. Not sent to the DMV.
+          Sent to you and {referringDoctor.name}.
+          <br />
+          Questions? Call {specialist.first}'s office at {offices.dana}.
         </p>
       </div>
       <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.25 }} className="mt-6 border-l-[3px] border-signal pl-4 text-[20px] leading-[1.45]">

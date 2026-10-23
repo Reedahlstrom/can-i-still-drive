@@ -3,7 +3,7 @@ import { AnimatePresence, motion } from "motion/react";
 import { useEffect, useState } from "react";
 import { patient } from "../data/demo";
 import { SimCanvas } from "../sim/SimCanvas";
-import { DRIVE, SCENARIOS, driveEvents, scenarioAt, useDriveClock } from "../sim/timeline";
+import { DRIVE, LEFT_TURNS, SCENARIOS, driveEvents, scenarioAt, useDriveClock } from "../sim/timeline";
 import { useDemo, useRaw, useScore } from "../state/store";
 import { HealthKeyLogo } from "../ui/Brand";
 import { Button } from "../ui/primitives";
@@ -18,7 +18,7 @@ export function DrivePrep() {
       title="Simulator drive"
       sub="Six scored drives on Simulator 1."
       actions={
-        <Button size="md" variant="signal" disabled={!feeling} onClick={() => go("driving", { simStart: Date.now(), drivesCompleted: null, live: { ...useDemo.getState().live, reactionMs: undefined } })}>
+        <Button size="md" variant="signal" disabled={!feeling} onClick={() => go("driving", { simStart: Date.now(), drivesCompleted: null, collisionSeen: false, live: { ...useDemo.getState().live, reactionMs: undefined } })}>
           Start simulator
         </Button>
       }
@@ -76,7 +76,7 @@ export function LiveDrive() {
   }, [confirmStop]);
   const stopDrive = () => {
     if (!confirmStop) return setConfirmStop(true);
-    go("post-drive", { drivesCompleted: idx });
+    go("post-drive", { drivesCompleted: idx, collisionSeen: raw.collision && t >= LEFT_TURNS[1] + 0.7 });
   };
   const isLive = scenario === "live";
   const events = driveEvents(raw, isLive ? liveReaction : undefined).filter((e) => e.at <= t);

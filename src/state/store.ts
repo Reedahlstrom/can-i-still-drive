@@ -63,6 +63,7 @@ export type Live = {
 
 export type Determination = {
   outcome: Outcome | null;
+  noteFor?: Outcome | null;
   reasoning: string;
   conditions: string[];
   plan: string[];
@@ -101,6 +102,7 @@ type Data = {
   selfRating: number | null;
   simStart: number | null;
   drivesCompleted: number | null;
+  collisionSeen: boolean;
   determination: Determination | null;
   ride: Ride;
   familyShare: Record<string, boolean>;
@@ -151,19 +153,22 @@ const initial: Data = {
   selfRating: null,
   simStart: null,
   drivesCompleted: null,
+  collisionSeen: false,
   determination: null,
   ride: null,
   familyShare: { results: false, rides: false },
   hkSharing: true,
 };
 
-export function rawFor(s: Pick<Data, "scenario" | "live" | "handsOn"> & { drivesCompleted?: number | null }): Raw {
+export function rawFor(s: Pick<Data, "scenario" | "live" | "handsOn"> & { drivesCompleted?: number | null; collisionSeen?: boolean }): Raw {
   const completedDrives = s.drivesCompleted ?? undefined;
-  if (s.scenario !== "live") return { ...presets[s.scenario], ...s.handsOn, completedDrives };
+  const collisionSeen = !!s.collisionSeen;
+  if (s.scenario !== "live") return { ...presets[s.scenario], ...s.handsOn, completedDrives, collisionSeen };
   const l = s.live;
   const base: Raw = {
     ...presets.clear,
     completedDrives,
+    collisionSeen,
     trailsSeconds: l.trailsSeconds === undefined ? undefined : l.trailsSeconds,
     trailsErrors: l.trailsErrors,
     trailsShort: true,
@@ -274,7 +279,8 @@ export const useRaw = () => {
   const live = useDemo((s) => s.live);
   const handsOn = useDemo((s) => s.handsOn);
   const drivesCompleted = useDemo((s) => s.drivesCompleted);
-  return rawFor({ scenario, live, handsOn, drivesCompleted });
+  const collisionSeen = useDemo((s) => s.collisionSeen);
+  return rawFor({ scenario, live, handsOn, drivesCompleted, collisionSeen });
 };
 
 export const useScore = () => score(useRaw());

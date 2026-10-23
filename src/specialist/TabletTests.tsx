@@ -24,7 +24,10 @@ export function Handoff() {
           </ol>
         </div>
         <div className="flex flex-col justify-between rounded-2xl bg-asphalt p-7 text-white">
-          <p className="text-[20px] leading-snug">Hand the iPad to {patient.first}. Results stay hidden from her screen.</p>
+          <div>
+            <p className="text-[20px] leading-snug">Hand the iPad to {patient.first}. Results stay hidden from her screen.</p>
+            <p className="mt-3 text-[15px] leading-snug text-white/60">To end early, press and hold "Test 1 of 5" at the top.</p>
+          </div>
           <Button variant="signal" className="mt-6 w-full" onClick={() => set({ tabletStep: "trails" })}>
             Start patient mode
           </Button>
@@ -40,7 +43,11 @@ function PatientFrame({ step, children }: { step: TabletStep; children: ReactNod
   const hold = useRef<ReturnType<typeof setTimeout> | null>(null);
   // The specialist can end the tests early by pressing and holding the step label.
   const startHold = () => {
-    hold.current = setTimeout(() => go("hands-on", { tabletStep: "done" }), 1200);
+    hold.current = setTimeout(() => {
+      const s = useDemo.getState();
+      if (s.tabletStep === "trails" && s.live.trailsSeconds === undefined) s.setLive({ trailsSeconds: null });
+      go("hands-on", { tabletStep: "done" });
+    }, 1200);
   };
   const endHold = () => {
     if (hold.current) clearTimeout(hold.current);

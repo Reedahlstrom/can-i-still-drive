@@ -56,14 +56,14 @@ export const outcomeCopy: Record<
   conditions: {
     label: "Drive with conditions",
     title: "You can keep driving, with a few limits.",
-    note: "You drove well on familiar roads. Lane changes at highway speed were harder, and the vision in your left eye has dropped since last year. Until your re-test, drive in daylight, stay off highways and stay within 15 miles of home.",
+    note: "You drove well on familiar roads. Lane changes at highway speed were harder, and the vision in your left eye has dropped since last year. The limits below keep you driving safely until your re-test.",
     conditions: ["Daylight only", "No highways", "Within 15 miles of home"],
     plan: ["Eye exam for glare", "Two practice drives on the simulator"],
     retestMonths: 6,
   },
   pause: {
     label: "Pause and reassess",
-    title: "Pause driving until your eyes are treated.",
+    title: "Pause driving until you're treated and re-tested.",
     note: "Your cataract is affecting your vision more than it did in March, and your sleep medicine may be making you drowsy in the morning. Both can be treated. Once they are, we'll test again.",
     conditions: [],
     plan: ["Cataract review", "Sleep medicine review", "Re-test after treatment"],
@@ -72,25 +72,25 @@ export const outcomeCopy: Record<
   stop: {
     label: "Time to stop",
     title: "It's time to stop driving.",
-    note: "Your memory test and the simulator drive showed that driving isn't safe for you right now. At one left turn you didn't see an oncoming car. We went over this together today. A memory clinic will look into why.",
+    note: "On the simulator you turned left into the path of an oncoming car. Together with your memory and attention tests, that tells me driving isn't safe for you now. We went over this together today. A memory clinic will look into the cause. If they find something that can be treated, I'll test you again.",
     conditions: [],
     plan: ["Memory clinic visit", "Ask Sarah to help with rides"],
     retestMonths: 0,
   },
 };
 
-/** Who takes care of each plan item, in the patient's words. */
+/** Who takes care of each plan item, in the patient's words, with a fallback if the call never comes. */
 export const planDetail: Record<string, string> = {
-  "Yearly eye exam": "Granite Eye Associates will send you a reminder.",
-  "Eye exam for glare": "Granite Eye Associates will call you to book.",
-  "Cataract review": "Granite Eye Associates will call you this week to book.",
-  "Sleep medicine review": "Dana sent Dr. Patel a note. Dr. Patel's office will call you.",
-  "Two practice drives on the simulator": "Dana's office will call you to book.",
-  "On-road driving check": "Dana's office will call you to book.",
-  "Therapy for strength": "Lakeview Rehabilitation will call you to book.",
-  "Memory clinic visit": "Dr. Patel's office will call you to book.",
-  "Ask Sarah to help with rides": "Only if you want to. You choose what Sarah sees in Family.",
-  "Re-test after treatment": "Dana's office will call you once your treatment is done.",
+  "Yearly eye exam": "Book with your eye doctor before this time next year.",
+  "Eye exam for glare": "Dr. Patel gets your report and will refer you to an eye doctor. No call within a week? Call (801) 555-0100.",
+  "Cataract review": "Dr. Patel gets your report and will refer you to Granite Eye Associates. No call within a week? Call (801) 555-0100.",
+  "Sleep medicine review": "Dana sent Dr. Patel a note. Dr. Patel's office will call you. No call within a week? Call (801) 555-0100.",
+  "Two practice drives on the simulator": "Dana's office will call you to book. No call within a week? Call (801) 555-0204.",
+  "On-road driving check": "Dana's office will call you to book. No call within a week? Call (801) 555-0204.",
+  "Therapy for strength": "Dana's office will refer you to Lakeview Rehabilitation. No call within a week? Call (801) 555-0204.",
+  "Memory clinic visit": "Dr. Patel's office will call you to book. No call within a week? Call (801) 555-0100.",
+  "Ask Sarah to help with rides": "Only if you want to. Tap Ride with Sarah when you need one.",
+  "Re-test after treatment": "Dr. Patel's office tells Dana when your treatment is done. Then Dana's office calls you to book.",
 };
 
 export const conditionLibrary = ["Daylight only", "No highways", "Within 15 miles of home", "No passengers", "Spinner knob", "Extra mirrors"];
