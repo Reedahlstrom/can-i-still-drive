@@ -131,6 +131,7 @@ export function RideSheet() {
   const answers = useDemo((s) => s.answers);
   const set = useDemo((s) => s.set);
   const speed = useDemo((s) => s.speed);
+  const textScale = useDemo((s) => s.textScale);
   const places = ((answers.places as string[] | undefined)?.length ? (answers.places as string[]) : ["Doctor visits", "Grocery store", "Family"]).filter((p) => destinations[p]);
   const option = rideOptions.find((o) => o.id === ride?.option) ?? rideOptions[1];
 
@@ -152,6 +153,7 @@ export function RideSheet() {
             role="dialog"
             aria-label="Book a ride"
             className="relative rounded-t-[28px] bg-canvas px-6 pt-5 pb-[calc(var(--safe-bottom,0px)+18px)]"
+            style={{ zoom: textScale }}
             variants={{ hidden: { y: "100%" }, shown: { y: 0 } }}
             transition={{ type: "spring", stiffness: 260, damping: 32 }}
           >

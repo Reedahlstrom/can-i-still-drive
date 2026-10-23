@@ -1,5 +1,6 @@
 import { Minus, Plus } from "lucide-react";
 import { patient } from "../data/demo";
+import { sampleClock } from "../data/scenarios";
 import { acuityScale, type Acuity, type Raw } from "../lib/score";
 import { rawFor, useDemo, useScore } from "../state/store";
 import { Button, Segmented } from "../ui/primitives";
@@ -124,7 +125,7 @@ export function HandsOn() {
               </ItemRow>
               <div className="flex items-center gap-4 px-5 py-3.5">
                 <div className="size-[88px] shrink-0 overflow-hidden rounded-xl border border-line bg-white">
-                  {live.clock ? <img src={live.clock} alt="Clock drawing" className="h-full w-full object-contain" /> : <div className="flex h-full items-center justify-center text-[12px] text-graphite">No drawing</div>}
+                  <img src={live.clock ?? sampleClock} alt="Clock drawing" className="h-full w-full object-contain" />
                 </div>
                 <div className="min-w-0 flex-1">
                   <div className="text-[16px] font-semibold">Clock drawing</div>

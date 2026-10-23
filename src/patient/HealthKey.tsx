@@ -143,6 +143,7 @@ export function HkSheet() {
   const set = useDemo((s) => s.set);
   const hkSources = useDemo((s) => s.hkSources);
   const hkShare = useDemo((s) => s.hkShare);
+  const textScale = useDemo((s) => s.textScale);
   const finish = () => set({ hkStep: null, hkConnected: true, patientStep: "hk-connected" });
 
   return (
@@ -158,6 +159,7 @@ export function HkSheet() {
             role="dialog"
             aria-label="HealthKey"
             className="relative flex h-[88%] flex-col rounded-t-[28px] bg-white px-6 pt-5 pb-[calc(var(--safe-bottom,0px)+18px)]"
+            style={{ zoom: textScale }}
             variants={{ hidden: { y: "100%" }, shown: { y: 0 } }}
             transition={{ type: "spring", stiffness: 260, damping: 32 }}
           >

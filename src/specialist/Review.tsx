@@ -136,7 +136,11 @@ export function ReviewSign() {
   const flags = result.findings.filter((f) => f.kind === "flag");
   const sim = result.domains.find((x) => x.id === "simulator")!;
 
-  const sign = () => set({ phase: "released", tab: "home", determination: { ...d, signedAt: Date.now() } });
+  const sign = () => {
+    const support = d.plan.some((p) => p.startsWith("Sarah added"));
+    const familyShare = useDemo.getState().familyShare;
+    set({ phase: "released", tab: "home", determination: { ...d, signedAt: Date.now() }, familyShare: support ? { ...familyShare, results: true } : familyShare });
+  };
 
   return (
     <div className="flex h-full min-w-0 flex-1">

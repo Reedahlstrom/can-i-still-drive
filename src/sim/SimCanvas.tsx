@@ -411,24 +411,28 @@ export function render(ctx: CanvasRenderingContext2D, W: number, H: number, t: n
     const p2 = project(z2, camX - x - dx);
     x += dx;
     dx += seg.curve;
-    const clip = maxy;
-    proj.push({ p1, p2, seg, clip });
-    if (p1.z <= CAM_DEPTH * 120 || p2.y >= p1.y || p2.y >= maxy) continue;
+    proj.push({ p1, p2, seg, clip: maxy });
+    if (p1.z > CAM_DEPTH * 120 && p2.y < p1.y) maxy = Math.min(maxy, p1.y);
+  }
+
+  // Paint far to near so each band overlaps the one behind it by a pixel.
+  for (let n = proj.length - 1; n >= 0; n--) {
+    const { p1, p2, seg } = proj[n];
+    if (p1.z <= CAM_DEPTH * 120 || p2.y >= p1.y || p2.y >= H) continue;
     const alt = Math.floor(seg.index / 3) % 2 === 0;
+    const y2 = p2.y - 1;
     ctx.fillStyle = alt ? C.grassA : C.grassB;
-    ctx.fillRect(0, p2.y, W, p1.y - p2.y + 1);
+    ctx.fillRect(0, y2, W, p1.y - y2);
     const r1 = p1.w / 9;
     const r2 = p2.w / 9;
-    // Overlap each band by a pixel so antialiasing never leaves seams.
-    const y2 = p2.y - 1;
     poly(ctx, [p1.x - p1.w - r1, p1.y, p1.x - p1.w, p1.y, p2.x - p2.w, y2, p2.x - p2.w - r2, y2], alt ? C.rumbleA : C.rumbleB);
     poly(ctx, [p1.x + p1.w + r1, p1.y, p1.x + p1.w, p1.y, p2.x + p2.w, y2, p2.x + p2.w + r2, y2], alt ? C.rumbleA : C.rumbleB);
     poly(ctx, [p1.x - p1.w, p1.y, p1.x + p1.w, p1.y, p2.x + p2.w, y2, p2.x - p2.w, y2], alt ? C.roadA : C.roadB);
     const l1 = p1.w / 34;
     const l2 = p2.w / 34;
     // Edge lines: yellow on the left, white on the right.
-    poly(ctx, [p1.x - p1.w + l1 * 0.6, p1.y, p1.x - p1.w + l1 * 1.6, p1.y, p2.x - p2.w + l2 * 1.6, p2.y, p2.x - p2.w + l2 * 0.6, p2.y], C.yellow);
-    poly(ctx, [p1.x + p1.w - l1 * 1.6, p1.y, p1.x + p1.w - l1 * 0.6, p1.y, p2.x + p2.w - l2 * 0.6, p2.y, p2.x + p2.w - l2 * 1.6, p2.y], C.line);
+    poly(ctx, [p1.x - p1.w + l1 * 0.6, p1.y, p1.x - p1.w + l1 * 1.6, p1.y, p2.x - p2.w + l2 * 1.6, y2, p2.x - p2.w + l2 * 0.6, y2], C.yellow);
+    poly(ctx, [p1.x + p1.w - l1 * 1.6, p1.y, p1.x + p1.w - l1 * 0.6, p1.y, p2.x + p2.w - l2 * 0.6, y2, p2.x + p2.w - l2 * 1.6, y2], C.line);
     if (seg.crosswalk) {
       const stripes = 9;
       for (let i = 0; i < stripes; i++) {
@@ -441,7 +445,6 @@ export function render(ctx: CanvasRenderingContext2D, W: number, H: number, t: n
     } else if (seg.index % 4 < 2) {
       poly(ctx, [p1.x - l1 * 0.5, p1.y, p1.x + l1 * 0.5, p1.y, p2.x + l2 * 0.5, p2.y, p2.x - l2 * 0.5, p2.y], C.line);
     }
-    maxy = p1.y;
   }
 
   // Sprites and traffic, far to near.

@@ -191,10 +191,12 @@ function stageState(stage: JumpStage, keep: Pick<Data, "scenario" | "speed" | "t
   const outcome = score(rawFor(drive)).suggested;
   const review: Data = { ...drive, phase: "review", postFeel: "Comfortable", selfRating: 4, determination: determinationFor(outcome) };
   if (stage === "review") return review;
+  const det = review.determination!;
   return {
     ...review,
     phase: "released",
-    determination: { ...review.determination!, discussed: true, signature: "demo", signedAt: Date.now() },
+    determination: { ...det, discussed: true, signature: "demo", signedAt: Date.now() },
+    familyShare: { ...review.familyShare, results: det.plan.some((p) => p.startsWith("Sarah added")) },
   };
 }
 

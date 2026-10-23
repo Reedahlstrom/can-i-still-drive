@@ -71,8 +71,11 @@ function Tablet({ children }: { children: ReactNode }) {
   );
 }
 
+const noDim = typeof location !== "undefined" && location.search.includes("nodim");
+
 function useFocus(): "phone" | "ipad" | "both" {
   const s = useDemo();
+  if (noDim) return "both";
   if (s.hkStep || s.ride) return "phone";
   switch (s.phase) {
     case "onboarding":
@@ -81,10 +84,8 @@ function useFocus(): "phone" | "ipad" | "both" {
       return "phone";
     case "pre-drive":
       return s.preDriveFeeling ? "ipad" : "phone";
-    case "post-drive":
-      return !s.postFeel || s.selfRating === null ? "both" : "ipad";
     default:
-      return "ipad";
+      return !s.postFeel || s.selfRating === null ? (s.phase === "post-drive" || s.phase === "uploading" || s.phase === "review" ? "both" : "ipad") : "ipad";
   }
 }
 

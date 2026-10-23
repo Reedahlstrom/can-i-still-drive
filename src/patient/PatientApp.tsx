@@ -64,7 +64,7 @@ function useView(): View {
 
   if (phase === "pre-drive" && !s.preDriveFeeling) return { key: "pre-drive", node: <PreDrive />, tabs: false, progress: true, chrome: true };
   if (phase === "driving") return { key: "driving", node: <Driving />, tabs: false, progress: false, chrome: false };
-  if (phase === "post-drive" && (!s.postFeel || s.selfRating === null))
+  if (atLeast(phase, "post-drive") && phase !== "released" && (!s.postFeel || s.selfRating === null))
     return { key: `post-${s.postFeel ? 2 : 1}`, node: <PostDrive />, tabs: false, progress: true, chrome: true };
 
   if (tab === "record") return { key: "record", node: <RecordTab />, tabs: true, progress: false, chrome: true };
