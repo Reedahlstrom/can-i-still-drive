@@ -806,16 +806,20 @@ export function Stop() {
   const frame = useCurrentFrame();
   const person = at("stop", "explains why, in person");
   const leads = at("stop", "Then her plan leads");
-  const daughter = at("stop", "a ride with her daughter");
-  const taxi = at("stop", "a taxi");
-  const shuttle = at("stop", "a senior shuttle");
-  const shots: Shot[] = [
+  const rides: Shot[] = [
     { src: "p-result-stop", at: 0 },
     { src: "p-result-stop-rides", at: leads + 26, motion: "scroll" },
-    { src: "p-ride-choose", at: daughter, motion: "sheet" },
-    { src: "p-ride-asked", at: taxi + 10, motion: "fade" },
-    { src: "p-ride-yes", at: shuttle + 24, motion: "fade" },
   ];
+  // Her plan in use: in Japanese a train route home, in English a ride with her daughter.
+  const shots: Shot[] =
+    LANG === "ja"
+      ? [...rides, { src: "p-ride-transit", at: at("stop", "trains and buses") + 24, motion: "sheet" }]
+      : [
+          ...rides,
+          { src: "p-ride-choose", at: at("stop", "a ride with her daughter"), motion: "sheet" },
+          { src: "p-ride-asked", at: at("stop", "a taxi") + 10, motion: "fade" },
+          { src: "p-ride-yes", at: at("stop", "a senior shuttle") + 24, motion: "fade" },
+        ];
   const phoneIn = interpolate(frame, [leads - 20, leads + 10], [0, 1], { extrapolateLeft: "clamp", extrapolateRight: "clamp", easing: ease });
   return (
     <Scene id="stop" drift={0.02}>

@@ -1,16 +1,18 @@
 // Japanese for every screen of the demo, keyed by the English text. Patient screens use plain, polite
-// Japanese; the specialist's iPad uses short clinical labels. Names are in katakana, and units are the
-// ones Japanese readers use (km/h, km, cm, decimal visual acuity).
+// Japanese; the specialist's iPad uses short clinical labels. Units are the ones Japanese readers use
+// (km/h, km, cm, decimal visual acuity). The patient and her daughter have Japanese names; everyone else
+// keeps theirs, in katakana.
 
 export const ja: Record<string, string> = {
   // ---------- People, places and time ----------
-  Margaret: "マーガレット",
-  Ellison: "エリソン",
-  "Margaret Ellison": "マーガレット・エリソン",
+  // A clinician addresses her by her family name, so her short name is 佐藤.
+  Margaret: "佐藤",
+  Ellison: "佐藤",
+  "Margaret Ellison": "佐藤 和子",
   Dana: "ダナさん",
   "Dana Ruiz": "ダナ・ルイス",
-  Sarah: "サラ",
-  "Sarah Ellison": "サラ・エリソン",
+  Sarah: "恵美",
+  "Sarah Ellison": "佐藤 恵美",
   "Dr. Anika Patel": "アニカ・パテル医師",
   "Robert Chen": "ロバート・チェン",
   "Linda Okafor": "リンダ・オカフォー",
@@ -51,7 +53,7 @@ export const ja: Record<string, string> = {
   Home: "自宅",
   "Hillside Market": "ヒルサイド・マーケット",
   "First Community Church": "ファースト・コミュニティ教会",
-  "Sarah's house": "サラの家",
+  "Sarah's house": "恵美の家",
   "Evergreen Senior Center": "エバーグリーン・シニアセンター",
   "Cottonwood Hardware": "コットンウッド・ハードウェア",
   ", ": "、",
@@ -199,7 +201,7 @@ export const ja: Record<string, string> = {
   "Sleep medicine review": "睡眠薬の見直し",
   "Re-test after treatment": "治療後の再テスト",
   "Memory clinic visit": "物忘れ外来の受診",
-  "Ask Sarah to help with rides": "送迎をサラに頼む",
+  "Ask Sarah to help with rides": "送迎を恵美に頼む",
   "On-road driving check": "路上での運転確認",
   "Therapy for strength": "筋力のリハビリ",
   "Book with your eye doctor before this time next year.": "来年の今ごろまでに、眼科を予約してください。",
@@ -211,7 +213,7 @@ export const ja: Record<string, string> = {
   "Dana's office will refer you to Lakeview Rehabilitation. No call within a week? Call (801) 555-0204.":
     "ダナさんの担当窓口から、レイクビュー・リハビリテーションを紹介します。1週間たっても連絡がなければ、(801) 555-0204 にお電話ください。",
   "Dr. Patel's office will call you to book. No call within a week? Call (801) 555-0100.": "パテル医師のクリニックから予約の電話があります。1週間たっても連絡がなければ、(801) 555-0100 にお電話ください。",
-  "Only if you want to. Tap Ride with Sarah when you need one.": "ご希望の場合だけです。必要なときに「サラに送ってもらう」をタップしてください。",
+  "Only if you want to. Tap Ride with Sarah when you need one.": "ご希望の場合だけです。必要なときに「恵美に送ってもらう」をタップしてください。",
   "Dr. Patel's office tells Dana when your treatment is done. Then Dana's office calls you to book.": "治療が終わると、パテル医師のクリニックからダナさんに連絡が入ります。その後、ダナさんの担当窓口から予約のお電話があります。",
   braking: "ブレーキ",
   "right turns": "右折",
@@ -446,6 +448,17 @@ export const ja: Record<string, string> = {
   "Ride with {name}": "{name}に送ってもらう",
   "Texts {name} to ask. Her answer shows up here.": "{name}さんにメッセージでお願いします。返事はここに表示されます。",
   "Text {name}": "{name}さんにメッセージ",
+  "Train or bus": "電車・バス",
+  "Senior fare. Routes without stairs.": "シニア料金。階段のない経路を案内します。",
+  "Show the route": "経路を表示",
+  "About {min} min to {place}": "{place}まで約{min}分",
+  "Senior fare, about $1 each way.": "シニア料金で片道約1ドルです。",
+  "Walk to {place}": "{place}まで歩く",
+  "{min} min, no stairs": "{min}分、階段なし",
+  "Lakeview Station": "レイクビュー駅",
+  "Maple St Station": "メープル通り駅",
+  "Red Line, {n} stops": "レッドラインで{n}駅",
+  "Next train at {time}. Elevator to the platform.": "次の電車は{time}発。ホームまでエレベーターがあります。",
   "Taxi by phone": "電話でタクシー",
   "Valley Cab. About $18. No app needed.": "バレー・タクシー。約18ドル。アプリは不要です。",
   "Call Valley Cab": "バレー・タクシーに電話",
@@ -461,6 +474,7 @@ export const ja: Record<string, string> = {
   "You pay in the app.": "支払いはアプリで行います。",
   "Getting around": "移動手段",
   "To {place}": "行き先：{place}",
+  "To {place}.": "行き先は{place}です。",
   "Asked {name}": "{name}さんにお願いしました",
   "We'll tell you when she answers.": "返事があればお知らせします。",
   "{name} said yes": "{name}さんが引き受けてくれました",
@@ -649,6 +663,6 @@ export const ja: Record<string, string> = {
   Phone: "スマートフォン",
   iPad: "iPad",
   "Start over": "最初からやり直す",
-  "Margaret's phone": "マーガレットのスマートフォン",
+  "Margaret's phone": "佐藤さんのスマートフォン",
   "Specialist's iPad, Simulator 1": "専門家のiPad（シミュレーター1）",
 };

@@ -4,7 +4,7 @@ import { shortDate, today } from "../lib/dates";
 import type { Outcome } from "../lib/score";
 import { useT } from "../i18n/useT";
 import { atLeast, useDemo, useScore, type Tab } from "../state/store";
-import { Avatar, HealthKeyLogo } from "../ui/Brand";
+import { Avatar, HealthKeyLogo, initialsOf } from "../ui/Brand";
 import { Group, SectionLabel, Toggle } from "../ui/primitives";
 import { Screen, Title } from "./Screen";
 
@@ -139,7 +139,7 @@ export function FamilyTab() {
     <Screen speech={t("Family. You choose what {name} can see.", { name: t(family.name) })}>
       <Title className="pt-1">{t("Family")}</Title>
       <div className="mt-7 flex items-center gap-4">
-        <Avatar initials={family.initials} size={56} tone="signal" />
+        <Avatar initials={initialsOf(family.name)} size={56} tone="signal" />
         <div>
           <div className="text-[21px] font-semibold">{t(family.name)}</div>
           <div className="text-[17px] leading-snug text-graphite">

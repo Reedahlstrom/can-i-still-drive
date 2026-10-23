@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { patient, record, shareCategories, sources } from "../data/demo";
 import { useT } from "../i18n/useT";
 import { useDemo } from "../state/store";
-import { Avatar, HealthKeyLogo } from "../ui/Brand";
+import { Avatar, HealthKeyLogo, initialsOf } from "../ui/Brand";
 import { Button, Group, Toggle } from "../ui/primitives";
 import { Lead, Screen, Title } from "./Screen";
 
@@ -187,7 +187,7 @@ export function HkSheet() {
                   <SheetBody key="signin">
                     <h2 className="font-display text-[28px] leading-tight font-extrabold">{t("Sign in to HealthKey")}</h2>
                     <div className="mt-6 flex items-center gap-4 rounded-2xl bg-hk-tint px-5 py-4">
-                      <Avatar initials={patient.initials} size={52} tone="hk" />
+                      <Avatar initials={initialsOf(`${patient.first} ${patient.last}`)} size={52} tone="hk" />
                       <div>
                         <div className="text-[20px] font-semibold">{t(account.name)}</div>
                         <div className="text-[16px] text-graphite">{t("{phone}, verified", { phone: account.phone })}</div>

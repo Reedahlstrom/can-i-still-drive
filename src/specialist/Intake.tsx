@@ -7,7 +7,7 @@ import { tr } from "../i18n";
 import { useT } from "../i18n/useT";
 import { longDate, today } from "../lib/dates";
 import { useDemo } from "../state/store";
-import { Avatar, HealthKeyLogo } from "../ui/Brand";
+import { Avatar, HealthKeyLogo, initialsOf } from "../ui/Brand";
 import { Button } from "../ui/primitives";
 import { Card, Pane } from "./Shell";
 
@@ -50,7 +50,7 @@ export function Schedule() {
             return (
               <div key={r.name} className={`flex items-center gap-5 px-6 py-4 ${current ? "" : "opacity-60"}`}>
                 <span className="w-24 font-display text-[17px] font-bold tnum">{t(r.time)}</span>
-                <Avatar initials={r.name.split(" ").map((x) => x[0]).join("")} size={40} tone={current ? "asphalt" : "mist"} />
+                <Avatar initials={initialsOf(r.name)} size={40} tone={current ? "asphalt" : "mist"} />
                 <div className="flex-1">
                   <div className="text-[18px] font-semibold">{t(r.name)}</div>
                   <div className="text-[15px] text-graphite">{t("age::{age}", { age: r.age })}</div>

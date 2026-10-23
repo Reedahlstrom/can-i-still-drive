@@ -258,6 +258,11 @@ await shot(phone, "p-ride-choose", 600);
 await phone.getByText(await L("Text {name}", { name: await L("Sarah") }), { exact: true }).first().click();
 await shot(phone, "p-ride-asked", 900);
 await shot(phone, "p-ride-yes", 3200);
+if (LANG === "ja") {
+  // The Japanese plan also offers trains and buses: the route home from the hospital.
+  await phone.evaluate(() => window.__demo.setState({ ride: { dest: "Home", option: "transit", when: "now", status: "arriving" } }));
+  await shot(phone, "p-ride-transit", 900);
+}
 await phone.evaluate(() => window.__demo.setState({ ride: null, tab: "record" }));
 await shot(phone, "p-record", 1000);
 await phone.evaluate(() => window.__demo.setState({ tab: "family" }));

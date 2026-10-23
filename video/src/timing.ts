@@ -39,7 +39,7 @@ const CUES_JA: Partial<Record<SceneId, Record<string, string>>> = {
     "Brake reaction": "新しい睡眠薬があるので",
     "A night drive in low light": "白内障があるので",
     "Left turns, where": "そして、ヒヤリとしやすい",
-    "Margaret sees which drives": "マーガレットさんにも",
+    "Margaret sees which drives": "佐藤さんにも",
   },
   review: {
     "what was measured": "測定した内容",
@@ -57,7 +57,7 @@ const CUES_JA: Partial<Record<SceneId, Record<string, string>>> = {
     "And time to stop": "そして、運転中止",
     "Many causes can be treated": "原因の多くは",
   },
-  stop: { "explains why, in person": "対面で", "Then her plan leads": "そのうえで", "a ride with her daughter": "娘さんの送迎", "a taxi": "タクシー", "a senior shuttle": "シニア向け" },
+  stop: { "explains why, in person": "対面で", "Then her plan leads": "そのうえで", "trains and buses": "電車やバス" },
   trust: { "The clinician always decides": "判断するのは常に", "Margaret controls what she shares": "共有する内容", "her records are never sold": "記録が販売", "DriverScore never reports": "ドライバースコアがみずから" },
   close: { "One clinician-signed plan": "すべての高齢ドライバー" },
 };

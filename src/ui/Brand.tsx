@@ -1,3 +1,5 @@
+import { tr } from "../i18n";
+
 type MarkProps = { size?: number; className?: string };
 
 export function DriverScoreMark({ size = 28, className }: MarkProps) {
@@ -49,6 +51,12 @@ export function HealthKeyLogo({ height = 26, light = false }: { height?: number;
   );
 }
 
+/** Initials for a person: two letters of an English name, or the first character of a Japanese family name. */
+export function initialsOf(name: string) {
+  const local = tr(name);
+  return /[\u4e00-\u9fff]/.test(local) ? local[0] : name.split(" ").map((w) => w[0]).join("");
+}
+
 export function Avatar({ initials, size = 48, tone = "asphalt" }: { initials: string; size?: number; tone?: "asphalt" | "signal" | "hk" | "mist" }) {
   const tones = {
     asphalt: "bg-asphalt text-white",
@@ -59,7 +67,7 @@ export function Avatar({ initials, size = 48, tone = "asphalt" }: { initials: st
   return (
     <span
       className={`inline-flex shrink-0 items-center justify-center rounded-full font-display font-bold ${tones[tone]}`}
-      style={{ width: size, height: size, fontSize: size * 0.36, paddingTop: size * 0.04 }}
+      style={{ width: size, height: size, fontSize: size * (initials.length === 1 ? 0.44 : 0.36), paddingTop: size * 0.04 }}
       aria-hidden
     >
       {initials}

@@ -1,9 +1,9 @@
-import { Bus, CalendarPlus, Car, CarFront, Check, ChevronRight, MapPin, Phone, Share2, Users } from "lucide-react";
+import { Bus, CalendarPlus, Car, CarFront, Check, ChevronRight, Footprints, MapPin, Phone, Share2, TramFront, Users } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { useEffect, useState, type ReactNode } from "react";
 import { destinations, family, home, locations, offices, referringDoctor, specialist } from "../data/demo";
 import { outcomeCopy, planDetail } from "../data/scenarios";
-import { tr } from "../i18n";
+import { getLang, tr } from "../i18n";
 import { useT } from "../i18n/useT";
 import { addMonths, longDate, shortDate, timeOf, today } from "../lib/dates";
 import { useDemo, useScore, type Ride } from "../state/store";
@@ -119,6 +119,8 @@ const rideOptions = (): RideOption[] => {
   const sarah = tr(family.first);
   return [
     { id: "family", icon: <Users size={24} />, name: tr("Ride with {name}", { name: sarah }), detail: tr("Texts {name} to ask. Her answer shows up here.", { name: sarah }), cta: tr("Text {name}", { name: sarah }) },
+    // In Japanese, trains and buses come next: the usual way to get around there without a car.
+    ...(getLang() === "ja" ? [{ id: "transit", icon: <TramFront size={24} />, name: tr("Train or bus"), detail: tr("Senior fare. Routes without stairs."), cta: tr("Show the route") }] : []),
     { id: "taxi", icon: <Phone size={24} />, name: tr("Taxi by phone"), detail: tr("Valley Cab. About $18. No app needed."), cta: tr("Call Valley Cab") },
     { id: "shuttle", icon: <Bus size={24} />, name: tr("Senior shuttle"), detail: tr("Free. Book a day ahead."), cta: tr("Ask for a shuttle ride") },
     { id: "app", icon: <Car size={24} />, name: "Uber", detail: tr("About $14, 5 minutes away"), cta: tr("Request Uber, about $14"), paid: tr("You pay in the Uber app.") },
@@ -147,6 +149,36 @@ function GettingAround() {
   );
 }
 
+/** A train route to where she's going: walk to the station, ride, walk the rest, with no stairs. */
+function TransitRoute({ destName, mins, atHospital }: { destName: string; mins: number; atHospital: boolean }) {
+  const t = useT();
+  const stops = Math.max(2, Math.round(mins / 3));
+  const legs = [
+    { icon: <Footprints size={22} />, title: t("Walk to {place}", { place: t(atHospital ? "Lakeview Station" : "Maple St Station") }), sub: t("{min} min, no stairs", { min: 6 }) },
+    { icon: <TramFront size={22} />, title: t("Red Line, {n} stops", { n: stops }), sub: t("Next train at {time}. Elevator to the platform.", { time: timeOf(new Date(Date.now() + 9 * 60_000)) }) },
+    { icon: <Footprints size={22} />, title: t("Walk to {place}", { place: destName }), sub: t("{min} min, no stairs", { min: 4 }) },
+  ];
+  // Walk, wait for the train, ride, walk.
+  const total = 6 + 3 + stops * 3 + 4;
+  return (
+    <>
+      <h2 className="font-display text-[28px] font-extrabold">{t("About {min} min to {place}", { min: total, place: destName })}</h2>
+      <p className="mt-1 text-[18px] text-graphite">{t("Senior fare, about $1 each way.")}</p>
+      <Group className="mt-4">
+        {legs.map((l, i) => (
+          <div key={i} className="flex items-center gap-4 px-5 py-3.5">
+            <span className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-mist">{l.icon}</span>
+            <span className="min-w-0 flex-1">
+              <span className="block text-[19px] font-semibold leading-snug">{l.title}</span>
+              <span className="block text-[17px] leading-snug text-graphite">{l.sub}</span>
+            </span>
+          </div>
+        ))}
+      </Group>
+    </>
+  );
+}
+
 /** A pickup time later today: at least two hours out, on the half hour. */
 function laterTime() {
   const t = new Date(Date.now() + 2 * 3600_000);
@@ -157,15 +189,18 @@ function laterTime() {
 function rideCopy(ride: NonNullable<Ride>, option: RideOption, destName: string) {
   const sarah = tr(family.first);
   const to = tr("To {place}", { place: destName });
+  // Sentences follow each other after a space in English, and straight on in Japanese.
+  const say = (...s: string[]) => s.join(getLang() === "ja" ? "" : " ");
+  const toPlace = tr("To {place}.", { place: destName });
   switch (option.id) {
     case "family":
       return ride.status === "requested"
         ? { title: tr("Asked {name}", { name: sarah }), sub: tr("We'll tell you when she answers.") }
-        : { title: tr("{name} said yes", { name: sarah }), sub: `${tr("She'll text you when she leaves.")} ${to}.` };
+        : { title: tr("{name} said yes", { name: sarah }), sub: say(tr("She'll text you when she leaves."), toPlace) };
     case "shuttle":
-      return { title: tr("Request sent"), sub: `${tr("The shuttle office will call you to set a time.")} ${to}.` };
+      return { title: tr("Request sent"), sub: say(tr("The shuttle office will call you to set a time."), toPlace) };
     default:
-      if (ride.when === "later") return { title: tr("Ride scheduled"), sub: `${tr("Pickup at {time}.", { time: laterTime() })} ${to}. ${tr("You'll get a text when the car is on its way.")}` };
+      if (ride.when === "later") return { title: tr("Ride scheduled"), sub: say(tr("Pickup at {time}.", { time: laterTime() }), toPlace, tr("You'll get a text when the car is on its way.")) };
       return ride.status === "requested" ? { title: tr("Finding your ride"), sub: to } : { title: tr("Your ride is on the way"), sub: to };
   }
 }
@@ -183,7 +218,13 @@ export function RideSheet() {
   const places = (atVisit ? ["Home", ...chosen.filter((p) => p !== "Doctor visits")] : chosen).filter((p) => destinations[p]);
   const hospital = locations.find((l) => l.here)!;
   const options = rideOptions();
-  const option = options.find((o) => o.id === ride?.option) ?? options[0];
+  const offered = options.find((o) => o.id === ride?.option);
+  const option = offered ?? options[0];
+
+  // Trains are offered only in Japanese, so switching to English closes a train route.
+  useEffect(() => {
+    if (ride && !offered) set({ ride: null });
+  }, [ride, offered, set]);
 
   useEffect(() => {
     if (ride?.status !== "requested") return;
@@ -195,11 +236,11 @@ export function RideSheet() {
   const destName = ride?.dest === "other" ? ride.other || t("Your address") : ride?.dest ? t(destinations[ride.dest]?.name ?? "") : "";
   const from = atVisit && ride?.when === "now" ? `${t(hospital.name)}${t(", ")}1200 E Lakeview Dr` : `${t(home.label)}${t(", ")}${home.address}`;
   const ready = !!ride?.dest && (ride.dest !== "other" || !!ride.other?.trim());
-  const request = () => ride && set({ ride: { ...ride, status: option.id === "shuttle" || (ride.when === "later" && option.id !== "family") ? "arriving" : "requested" } });
+  const request = () => ride && set({ ride: { ...ride, status: option.id === "shuttle" || option.id === "transit" || (ride.when === "later" && option.id !== "family") ? "arriving" : "requested" } });
 
   return (
     <AnimatePresence>
-      {ride && (
+      {ride && offered && (
         <motion.div className="absolute inset-0 z-40 flex flex-col justify-end" initial="hidden" animate="shown" exit="hidden">
           <motion.div className="absolute inset-0 bg-asphalt/45" variants={{ hidden: { opacity: 0 }, shown: { opacity: 1 } }} onClick={close} />
           <motion.div
@@ -254,7 +295,7 @@ export function RideSheet() {
                     );
                   })}
                 </Group>
-                {option.id !== "shuttle" && (
+                {option.id !== "shuttle" && option.id !== "transit" && (
                   <div className="mt-4 flex items-center justify-between">
                     <span className="text-[17px] font-semibold">{t("When")}</span>
                     <Segmented
@@ -277,6 +318,13 @@ export function RideSheet() {
                 </div>
                 <Button className="mt-5 w-full" disabled={!ready} onClick={request}>
                   {option.cta}
+                </Button>
+              </>
+            ) : option.id === "transit" ? (
+              <>
+                <TransitRoute destName={destName} mins={destinations[ride.dest]?.mins ?? 15} atHospital={atVisit && ride.when === "now"} />
+                <Button variant="secondary" className="mt-5 w-full" onClick={close}>
+                  {t("Done")}
                 </Button>
               </>
             ) : (

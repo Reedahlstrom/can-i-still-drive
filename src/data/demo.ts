@@ -6,7 +6,6 @@ export const patient = {
   dob: "March 14, 1948",
   age: 78,
   phone: "(801) 555-0142",
-  initials: "ME",
 };
 
 export const specialist = {
@@ -27,7 +26,6 @@ export const family = {
   name: "Sarah Ellison",
   first: "Sarah",
   relation: "Daughter",
-  initials: "SE",
   phone: "(801) 555-0187",
 };
 

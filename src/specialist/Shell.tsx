@@ -3,7 +3,7 @@ import type { ReactNode } from "react";
 import { patient, specialist, visit } from "../data/demo";
 import { useT } from "../i18n/useT";
 import { atLeast, useDemo, type Phase } from "../state/store";
-import { Avatar, DriverScoreMark } from "../ui/Brand";
+import { Avatar, DriverScoreMark, initialsOf } from "../ui/Brand";
 
 const steps: { label: string; from: Phase; done: Phase }[] = [
   { label: "Review and assign", from: "record-review", done: "pre-drive" },
@@ -38,7 +38,7 @@ export function Rail() {
       {inVisit ? (
         <>
           <div className="mt-10 flex items-center gap-3">
-            <Avatar initials={patient.initials} size={46} tone="signal" />
+            <Avatar initials={initialsOf(`${patient.first} ${patient.last}`)} size={46} tone="signal" />
             <div>
               <div className="text-[18px] font-semibold leading-tight">{t(`${patient.first} ${patient.last}`)}</div>
               <div className="text-[14px] text-white/60">{t("{age}, {time}", { age: patient.age, time: t(visit.time) })}</div>
