@@ -6,3 +6,4 @@ dev-dist
 *.log
 # Source documents are confidential: kept locally, never committed
 docs/source/
+.wrangler

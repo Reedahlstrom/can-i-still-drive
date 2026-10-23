@@ -1,6 +1,6 @@
 # Can I Still Drive
 
-Live demo: https://reedahlstrom.github.io/can-i-still-drive/
+Live demo: https://can-i-still-drive.reedahlstrom.workers.dev
 
 Clickable prototype of DriverScore: a driving assessment done as part of a doctor's visit. The patient connects their health record through HealthKey, checks in at the hospital, takes tablet tests and a simulator drive, and gets a result their specialist has signed.
 
@@ -49,6 +49,10 @@ Press the sliders button in the bottom-right corner of the stage (or the backtic
 DriverScore v0 follows the CISD scoring sheet: vision 20, cognition 17 rescaled to 20, motor 20, simulator 40. Hard stops (very poor acuity, half the visual field missing, Trails B not finished, a collision or missed signal) override the total. The specialist chooses one of four outcomes; the score only suggests one. See `src/lib/score.ts`.
 
 All people, places and records in the demo are fictional.
+
+## Deploy
+
+Hosted on Cloudflare Workers (static assets). `npm run deploy` builds and publishes with Wrangler.
 
 ## Stack
 
