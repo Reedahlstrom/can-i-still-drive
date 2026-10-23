@@ -2,12 +2,12 @@ import { fade } from "@remotion/transitions/fade";
 import { TransitionSeries, linearTiming } from "@remotion/transitions";
 import { useEffect, useState, type ComponentType } from "react";
 import { AbsoluteFill, Audio, continueRender, delayRender, interpolate, staticFile } from "remotion";
-import { Checkin, Clear, Close, Drive, Home, Open, Outcomes, Problem, Record, Review, Solution, Stop, Tests, Trust } from "./scenes";
+import { Assign, Checkin, Clear, Close, Drive, Home, Open, Outcomes, Problem, Record, Review, Solution, Stop, Trust } from "./scenes";
 import { FPS } from "./theme";
 import { LEAD, ORDER, TOTAL, TRANS, sceneFrames, sceneStarts, voSeconds, type SceneId } from "./timing";
 
 const scenes: Record<SceneId, ComponentType> = {
-  open: Open, problem: Problem, solution: Solution, home: Home, checkin: Checkin, tests: Tests, drive: Drive,
+  open: Open, problem: Problem, solution: Solution, home: Home, checkin: Checkin, assign: Assign, drive: Drive,
   record: Record, review: Review, clear: Clear, stop: Stop, outcomes: Outcomes, trust: Trust, close: Close,
 };
 

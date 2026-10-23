@@ -3,10 +3,10 @@ import script from "../script.json";
 import { FPS } from "./theme";
 
 export type SceneId =
-  | "open" | "problem" | "solution" | "home" | "checkin" | "tests" | "drive"
+  | "open" | "problem" | "solution" | "home" | "checkin" | "assign" | "drive"
   | "record" | "review" | "clear" | "stop" | "outcomes" | "trust" | "close";
 
-export const ORDER: SceneId[] = ["open", "problem", "solution", "home", "checkin", "tests", "drive", "record", "review", "clear", "stop", "outcomes", "trust", "close"];
+export const ORDER: SceneId[] = ["open", "problem", "solution", "home", "checkin", "assign", "drive", "record", "review", "clear", "stop", "outcomes", "trust", "close"];
 
 /** Seconds of silence before the voice starts in each scene, and after it ends. */
 export const LEAD = 0.5;
@@ -14,7 +14,7 @@ export const TAIL = 0.9;
 /** Frames two neighbouring scenes overlap during a transition. */
 export const TRANS = 20;
 
-const extra: Partial<Record<SceneId, number>> = { open: 2.2, problem: 0.4, solution: 0.6, drive: 1.6, clear: 1.4, stop: 0.6, outcomes: 1.0, trust: 0.4, close: 3.2 };
+const extra: Partial<Record<SceneId, number>> = { open: 2.2, problem: 0.4, solution: 0.8, assign: 0.6, drive: 1.5, review: 1.4, clear: 1.4, stop: 0.6, outcomes: 1.0, trust: 0.4, close: 3.2 };
 
 const dur = durations as Record<SceneId, number>;
 const text = Object.fromEntries((script as { id: SceneId; text: string }[]).map((s) => [s.id, s.text])) as Record<SceneId, string>;

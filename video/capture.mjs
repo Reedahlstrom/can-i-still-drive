@@ -12,6 +12,20 @@ const browser = await chromium.launch();
 // One context so the phone and iPad tabs share the visit (they sync over BroadcastChannel).
 const ctx = await browser.newContext({ deviceScaleFactor: 3 });
 await ctx.addInitScript(() => localStorage.removeItem("driverscore-demo-v2"));
+// Late morning on the visit day, so times on screen read like a real appointment. Timers run normally.
+const SHIFT = new Date(2026, 9, 23, 11, 18).getTime() - Date.now();
+await ctx.addInitScript((shift) => {
+  const Real = Date;
+  class Shifted extends Real {
+    constructor(...a) {
+      a.length ? super(...a) : super(Real.now() + shift);
+    }
+    static now() {
+      return Real.now() + shift;
+    }
+  }
+  globalThis.Date = Shifted;
+}, SHIFT);
 
 const phone = await ctx.newPage();
 await phone.setViewportSize({ width: 393, height: 852 });
@@ -57,6 +71,20 @@ async function scrollMain(page, y) {
   }, y);
 }
 
+async function scrollToText(page, text, top = 24) {
+  await page.evaluate(
+    ([text, top]) => {
+      const el = [...document.querySelectorAll("body *")].find((e) => e.childElementCount === 0 && e.textContent.trim() === text);
+      if (!el) return;
+      let box = el.parentElement;
+      while (box && !(box.scrollHeight > box.clientHeight + 4 && /auto|scroll/.test(getComputedStyle(box).overflowY))) box = box.parentElement;
+      if (!box) return;
+      box.scrollTop += el.getBoundingClientRect().top - box.getBoundingClientRect().top - top;
+    },
+    [text, top],
+  );
+}
+
 const meta = {};
 
 // ---------- Phone: at home ----------
@@ -95,74 +123,23 @@ await shot(ipad, "i-arrived", 300);
 await state(ipad, "checkin", { phase: "record-review", location: "lakeview", simulator: "sim1" });
 await shot(ipad, "i-record-review");
 
-// ---------- iPad: tests ----------
-await state(ipad, "tests");
-await shot(ipad, "i-handoff");
-await state(ipad, "tests", { tabletStep: "trails" });
-await wait(500);
-await clickText(ipad, "Start");
-await wait(400);
-for (const l of ["1", "A", "2", "B", "3"]) {
-  await ipad.locator(`button[aria-label="${l}"]`).click();
-  await wait(120);
-}
-await shot(ipad, "i-trails", 500);
-await state(ipad, "tests", { tabletStep: "clock" });
-await wait(500);
-await clickText(ipad, "Start");
-await wait(500);
-await ipad.evaluate(() => {
-  const c = document.querySelector('canvas[aria-label="Drawing area"]');
-  const r = c.getBoundingClientRect();
-  const ev = (type, x, y) => c.dispatchEvent(new PointerEvent(type, { bubbles: true, clientX: r.left + x * r.width, clientY: r.top + y * r.height, pointerId: 1 }));
-  const stroke = (pts) => {
-    ev("pointerdown", ...pts[0]);
-    for (const p of pts.slice(1)) ev("pointermove", ...p);
-    ev("pointerup", ...pts[pts.length - 1]);
-  };
-  const circle = [];
-  for (let i = 0; i <= 72; i++) {
-    const a = (i / 72) * Math.PI * 2;
-    circle.push([0.5 + 0.38 * Math.cos(a) + Math.sin(i * 1.3) * 0.004, 0.5 + 0.38 * Math.sin(a) + Math.cos(i) * 0.003]);
-  }
-  stroke(circle);
-  // numbers as small hand-drawn strokes
-  const digits = { 1: [[0, -1], [0, 1]], 2: [[-1, -1], [1, -1], [1, 0], [-1, 0], [-1, 1], [1, 1]], 3: [[-1, -1], [1, -1], [0, 0], [1, 1], [-1, 1]], 4: [[-1, -1], [-1, 0], [1, 0], [1, -1], [1, 1]], 5: [[1, -1], [-1, -1], [-1, 0], [1, 0], [1, 1], [-1, 1]], 6: [[1, -1], [-1, -1], [-1, 1], [1, 1], [1, 0], [-1, 0]], 7: [[-1, -1], [1, -1], [-0.2, 1]], 8: [[-1, -1], [1, -1], [-1, 1], [1, 1], [-1, -1]], 9: [[1, 0], [-1, 0], [-1, -1], [1, -1], [1, 1]] };
-  for (let h = 1; h <= 12; h++) {
-    const a = (h / 12) * Math.PI * 2 - Math.PI / 2;
-    const cx = 0.5 + 0.3 * Math.cos(a);
-    const cy = 0.5 + 0.3 * Math.sin(a);
-    const parts = String(h).split("");
-    parts.forEach((d, k) => {
-      const ox = (k - (parts.length - 1) / 2) * 0.03;
-      const oval = Array.from({ length: 13 }, (_, j) => [Math.sin((j / 12) * Math.PI * 2) * 0.8, -Math.cos((j / 12) * Math.PI * 2)]);
-      const pts = d === "0" ? oval : digits[d] ?? digits[1];
-      stroke(pts.map(([x, y]) => [cx + ox + x * 0.01, cy + y * 0.018]));
-    });
-  }
-  stroke([[0.5, 0.5], [0.44, 0.33]]);
-  stroke([[0.5, 0.5], [0.66, 0.44]]);
-});
-await shot(ipad, "i-clock", 400);
-await state(ipad, "tests", { tabletStep: "signs" });
-await wait(500);
-await clickText(ipad, "Start");
-await shot(ipad, "i-signs", 700);
-await state(ipad, "tests", { tabletStep: "colors" });
-await wait(500);
-await clickText(ipad, "Start");
-await shot(ipad, "i-colors", 700);
-await state(ipad, "tests", { phase: "hands-on", tabletStep: "done" });
-await shot(ipad, "i-hands-on");
+// ---------- iPad: the specialist assigns drives ----------
+await state(ipad, "assign");
+await shot(ipad, "i-assign", 1100);
 
 // ---------- Drive ----------
+// First pre-drive screen on the phone: which drives Dana chose, and why.
 await state(phone, "drive", { preDriveFeeling: null });
-await wait(400);
+await shot(phone, "p-assigned", 1100);
+await clickText(phone, "Continue");
+await wait(500);
 await clickText(phone, "I feel fine");
 await shot(phone, "p-before-drive", 500);
 await state(ipad, "drive");
 await shot(ipad, "i-drive-prep");
-await state(ipad, "drive", { phase: "driving", simStart: Date.now() - 20500 });
+// Last drive under way: five of six drives scored. simStart uses the page's clock.
+await state(ipad, "drive", { phase: "driving" });
+await ipad.evaluate((ago) => window.__demo.setState({ simStart: Date.now() - ago }), 43000);
 await ipad.waitForSelector('canvas[aria-label="Simulator view"]', { timeout: 8000 }).catch(async () => {
   console.log("state now", await ipad.evaluate(() => window.__demo.getState().phase));
 });
@@ -171,13 +148,20 @@ meta.liveCanvas = await ipad.evaluate(() => {
   const r = document.querySelector('canvas[aria-label="Simulator view"]').getBoundingClientRect();
   return { x: r.x, y: r.y, w: r.width, h: r.height };
 });
+meta.liveDriveT = 43;
 await shot(ipad, "i-live-drive", 100);
 await shot(phone, "p-driving", 100);
 await state(ipad, "drive", { phase: "post-drive", postFeel: "Comfortable", selfRating: 4 });
 await shot(ipad, "i-drive-done");
-await state(ipad, "drive", { phase: "uploading", postFeel: "Comfortable", selfRating: 4 });
-await shot(ipad, "i-upload-1", 700);
-await shot(ipad, "i-upload-2", 900);
+// Half speed: rows tick at 0.7, 1.54, 2.38 and 3.22 s, review opens at 4.22 s.
+await state(ipad, "drive", { phase: "uploading", postFeel: "Comfortable", selfRating: 4, speed: 0.5 });
+await shot(ipad, "i-upload-1", 1100);
+// All four saved: wait for the last row's tick, then its colour transition.
+await ipad.waitForFunction(() => {
+  const label = [...document.querySelectorAll("div")].find((e) => e.childElementCount === 0 && e.textContent === "Simulator session");
+  return !!label?.closest(".flex")?.querySelector("span.bg-hk svg");
+});
+await shot(ipad, "i-upload-2", 400);
 
 // ---------- Review and sign ----------
 async function sign(page) {
@@ -195,6 +179,16 @@ async function sign(page) {
 }
 await state(ipad, "review", {}, "clear");
 await shot(ipad, "i-review-blank", 2600);
+// One drive opened to its measurement, rule and result.
+const nightRow = ipad.locator("button[aria-expanded]", { hasText: "Night drive with glare" });
+await nightRow.click();
+await shot(ipad, "i-review-row", 800);
+await nightRow.click();
+await wait(500);
+await scrollToText(ipad, "Why this suggestion", 40);
+await shot(ipad, "i-review-why", 600);
+await scrollMain(ipad, 0);
+await wait(300);
 await ipad.locator('button[role="radio"]', { hasText: "Clear" }).click();
 await shot(ipad, "i-review-chosen", 700);
 await sign(ipad);
@@ -205,7 +199,9 @@ await phone.evaluate(() => window.__demo.setState({ tab: "home" }));
 await shot(phone, "p-result-clear", 2600);
 await scrollMain(phone, 420);
 await shot(phone, "p-result-clear-score", 2400);
-await scrollMain(phone, 900);
+await scrollToText(phone, "Brake reaction", 16);
+await shot(phone, "p-result-clear-drives", 1800);
+await scrollToText(phone, "City drive", 16);
 await shot(phone, "p-result-clear-steps", 600);
 
 // Time to stop path.

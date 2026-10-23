@@ -224,7 +224,7 @@ export function Problem() {
               <div>
                 <div style={{ ...T.hero, fontSize: 150 }}>{count} million</div>
                 <div style={{ ...T.lead, marginTop: 14 }}>licensed drivers 65 and older in the U.S.</div>
-                <div style={{ ...T.small, marginTop: 18 }}>Source: CDC, 2022</div>
+                <div style={{ ...T.small, marginTop: 18 }}>Source: NHTSA, 2022 data</div>
               </div>
             ),
           },
@@ -255,11 +255,10 @@ export function Problem() {
 // ---------------------------------------------------------------- 3. Solution
 
 const flowPaths = {
-  a: "M520 300 C 700 300, 760 520, 860 530",
-  b: "M520 540 C 660 540, 760 540, 860 540",
-  c: "M520 780 C 700 780, 760 560, 860 550",
-  d: "M1140 540 C 1200 540, 1220 540, 1290 540",
-  e: "M1570 540 C 1600 540, 1610 540, 1640 540",
+  a: "M490 380 C 590 380, 600 520, 670 532",
+  b: "M490 700 C 590 700, 600 560, 670 548",
+  d: "M980 540 C 1020 540, 1050 540, 1100 540",
+  e: "M1400 540 C 1440 540, 1470 540, 1510 540",
 };
 
 function Particles({ d, start, count = 5, speed = 70 }: { d: string; start: number; count?: number; speed?: number }) {
@@ -282,10 +281,10 @@ function Node({ x, y, w = 330, delay, icon, title, sub, accent }: { x: number; y
   const s = useSpring(delay, { damping: 18, stiffness: 110 });
   return (
     <div style={{ position: "absolute", left: x, top: y, width: w, transform: `translateY(-50%) scale(${0.9 + 0.1 * s})`, opacity: Math.min(1, s * 1.2) }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 20, padding: "22px 26px", borderRadius: 28, background: C.asphalt2, boxShadow: `0 30px 60px -24px rgba(0,0,0,0.55), inset 0 0 0 ${accent ? 2 : 1}px ${accent ?? "rgba(255,255,255,0.08)"}` }}>
-        <div style={{ width: 66, height: 66, borderRadius: 18, background: accent ? `${accent}26` : "rgba(255,255,255,0.07)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>{icon}</div>
+      <div style={{ display: "flex", alignItems: "center", gap: 18, padding: "22px 22px", borderRadius: 28, background: C.asphalt2, boxShadow: `0 30px 60px -24px rgba(0,0,0,0.55), inset 0 0 0 ${accent ? 2 : 1}px ${accent ?? "rgba(255,255,255,0.08)"}` }}>
+        <div style={{ width: 60, height: 60, borderRadius: 17, background: accent ? `${accent}26` : "rgba(255,255,255,0.07)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>{icon}</div>
         <div>
-          <div style={{ fontFamily: display, fontWeight: 800, fontSize: 30, color: "#fff", lineHeight: 1.1 }}>{title}</div>
+          <div style={{ fontFamily: display, fontWeight: 800, fontSize: 29, color: "#fff", lineHeight: 1.1, whiteSpace: "nowrap" }}>{title}</div>
           {sub && <div style={{ fontFamily: body, fontSize: 21, color: "rgba(255,255,255,0.6)", marginTop: 4 }}>{sub}</div>}
         </div>
       </div>
@@ -294,11 +293,10 @@ function Node({ x, y, w = 330, delay, icon, title, sub, accent }: { x: number; y
 }
 
 export function Solution() {
-  const a1 = at("solution", "A driving simulator");
-  const a2 = at("solution", "a few short clinical tests");
-  const a3 = at("solution", "the patient's own health record");
-  const a4 = at("solution", "in one place");
+  const a1 = at("solution", "the patient's own health record");
+  const a2 = at("solution", "simulator drives chosen for her");
   const a5 = at("solution", "A driving specialist reviews");
+  const a4 = a5 - 22;
   const a6 = at("solution", "and signs the result");
   return (
     <Scene id="solution" drift={0.02}>
@@ -317,22 +315,19 @@ export function Solution() {
       </div>
       <svg width="1920" height="1080" style={{ position: "absolute", inset: 0 }}>
         <Particles d={flowPaths.a} start={a4} />
-        <Particles d={flowPaths.b} start={a4 + 6} />
-        <Particles d={flowPaths.c} start={a4 + 12} />
+        <Particles d={flowPaths.b} start={a4 + 8} />
         <Particles d={flowPaths.d} start={a5} count={3} speed={50} />
         <Particles d={flowPaths.e} start={a6} count={2} speed={40} />
       </svg>
       <RoadLine d={flowPaths.a} start={a1 + 8} duration={30} opacity={0.45} width={3} />
       <RoadLine d={flowPaths.b} start={a2 + 8} duration={30} opacity={0.45} width={3} />
-      <RoadLine d={flowPaths.c} start={a3 + 8} duration={30} opacity={0.45} width={3} />
       <RoadLine d={flowPaths.d} start={a5} duration={20} opacity={0.6} width={3} />
       <RoadLine d={flowPaths.e} start={a6} duration={14} opacity={0.6} width={3} />
-      <Node x={180} y={300} delay={a1} icon={<Icon name="wheel" size={40} />} title="Simulator drive" sub="Six scored drives" />
-      <Node x={180} y={540} delay={a2} icon={<Icon name="clipboard" size={40} />} title="Clinical tests" sub="Vision, thinking, movement" />
-      <Node x={180} y={780} delay={a3} icon={<HealthKeyTile size={42} />} title="Health record" sub="From HealthKey, by consent" />
-      <Node x={860} y={540} w={280} delay={a4} accent={C.hk} icon={<Icon name="record" size={40} />} title="One record" sub="Every value keeps its source" />
-      <Node x={1290} y={540} w={280} delay={a5} icon={<Icon name="pen" size={40} />} title="Specialist" sub="Reviews and decides" />
-      <Node x={1640} y={540} w={250} delay={a6} accent={C.signal} icon={<Icon name="phone" size={40} />} title="Signed plan" sub="On her phone" />
+      <Node x={100} y={380} w={390} delay={a1} icon={<HealthKeyTile size={40} />} title="Health record" sub="From HealthKey, by consent" />
+      <Node x={100} y={700} w={390} delay={a2} icon={<Icon name="wheel" size={38} />} title="Simulator drives" sub="Chosen for her" />
+      <Node x={670} y={540} w={310} delay={a4} accent={C.hk} icon={<Icon name="record" size={38} />} title="One record" sub="Every value keeps its source" />
+      <Node x={1100} y={540} w={300} delay={a5} icon={<Icon name="pen" size={38} />} title="Specialist" sub="Reviews and decides" />
+      <Node x={1510} y={540} w={310} delay={a6} accent={C.signal} icon={<Icon name="phone" size={38} />} title="Signed plan" sub="On her phone" />
     </Scene>
   );
 }
@@ -417,7 +412,7 @@ export function Checkin() {
       </Enter>
       <div style={{ position: "absolute", left: 640, top: 150, opacity: 0.35 + focusIpad * 0.65, transform: `scale(${zoom})`, transformOrigin: "30% 55%" }}>
         <IPad shots={ipadShots} scale={sc}>
-          <Highlight x={330} y={133} w={438} h={557} delay={most} radius={26} />
+          <Highlight x={330} y={133} w={370} h={512} delay={most} radius={26} />
         </IPad>
       </div>
       <Callout text="Margaret has checked in" delay={ipad + 4} style={{ left: 660, top: 1010 }} />
@@ -425,36 +420,80 @@ export function Checkin() {
   );
 }
 
-// ---------------------------------------------------------------- 6. Tests
+// ---------------------------------------------------------------- 6. The specialist assigns drives
 
-export function Tests() {
-  const circles = at("tests", "connecting circles");
-  const clock = at("tests", "drawing a clock");
-  const signs = at("tests", "matching road signs");
-  const colors = at("tests", "naming colors");
-  const hands = at("tests", "Then the specialist");
-  const shots: Shot[] = [
-    { src: "i-handoff", at: 0 },
-    { src: "i-trails", at: circles - 4 },
-    { src: "i-clock", at: clock - 4 },
-    { src: "i-signs", at: signs - 4 },
-    { src: "i-colors", at: colors - 4 },
-    { src: "i-hands-on", at: hands },
-  ];
-  const { w } = ipadSize(1.06);
+/** Moves a full-frame layer so that frame point F lands at screen point P, scaled by s. Keys interpolate in order. */
+function useCamera(keys: { f: number; s: number; F: [number, number]; P?: [number, number] }[]) {
+  const frame = useCurrentFrame();
+  const k = keys.map((x) => ({ ...x, P: x.P ?? (x.s === 1 ? x.F : ([960, 540] as [number, number])) }));
+  let i = 0;
+  while (i < k.length - 1 && frame >= k[i + 1].f) i++;
+  const a = k[i];
+  const b = k[Math.min(i + 1, k.length - 1)];
+  const p = b.f === a.f ? 1 : interpolate(frame, [a.f, b.f], [0, 1], { extrapolateLeft: "clamp", extrapolateRight: "clamp", easing: easeInOut });
+  const mix = (u: number, v: number) => u + (v - u) * p;
+  const s = mix(a.s, b.s);
+  const F = [mix(a.F[0], b.F[0]), mix(a.F[1], b.F[1])];
+  const P = [mix(a.P[0], b.P[0]), mix(a.P[1], b.P[1])];
+  return { transform: `translate(${P[0] - s * F[0]}px, ${P[1] - s * F[1]}px) scale(${s})`, transformOrigin: "0 0" } as CSSProperties;
+}
+
+/** Screen position of a point on an iPad screen placed at (left, top) with this scale. */
+const onIpad = (left: number, top: number, scale: number, x: number, y: number): [number, number] => [left + (IPAD_BEZEL + x) * scale, top + (IPAD_BEZEL + y) * scale];
+
+const reasons = [
+  { phrase: "Brake reaction", title: "Brake reaction", why: "New sleep medicine can slow reactions", row: { y: 183, h: 107 } },
+  { phrase: "A night drive with glare", title: "Night drive with glare", why: "Cataract, left eye", row: { y: 662, h: 90 } },
+  { phrase: "Left turns, where", title: "Left turns across traffic", why: "Where most close calls happen", row: { y: 378, h: 88 } },
+];
+
+export function Assign() {
+  const frame = useCurrentFrame();
+  const picks = at("assign", "the specialist picks");
+  const sees = at("assign", "Margaret sees which drives");
+  const sc = 0.92;
+  const L = 90;
+  const Tp = 140;
+  const card = onIpad(L, Tp, sc, 930, 470);
+  const cam = useCamera([
+    { f: 0, s: 1, F: [960, 540] },
+    { f: picks, s: 1, F: [960, 540] },
+    { f: picks + 30, s: 1.3, F: card, P: [760, 560] },
+    { f: sees - 12, s: 1.3, F: card, P: [760, 560] },
+    { f: sees + 18, s: 1, F: [960, 540] },
+  ]);
+  const listOut = interpolate(frame, [sees - 10, sees + 10], [1, 0], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
   return (
-    <Scene id="tests" drift={0.02}>
-      <div style={{ position: "absolute", left: 0, right: 0, top: 34, display: "flex", justifyContent: "center" }}>
-        <Beats
-          style={{ position: "relative", width: 900, height: 50 }}
-          items={[
-            { at: 0, node: <div style={{ textAlign: "center" }}><Kicker>Tablet tests</Kicker></div> },
-            { at: hands, node: <div style={{ textAlign: "center" }}><Kicker>Hands-on checks</Kicker></div> },
-          ]}
-        />
+    <Scene id="assign" drift={0.01}>
+      <AbsoluteFill style={cam}>
+        <div style={{ position: "absolute", left: 150, top: 64 }}>
+          <Kicker delay={2}>The specialist assigns the drives</Kicker>
+        </div>
+        <Enter delay={0} style={{ left: L, top: Tp }}>
+          <IPad shots={[{ src: "i-assign", at: 0 }]} scale={sc}>
+            {reasons.map((r) => (
+              <Highlight key={r.phrase} x={735} y={r.row.y} w={400} h={r.row.h} delay={at("assign", r.phrase) - 4} radius={14} />
+            ))}
+          </IPad>
+        </Enter>
+      </AbsoluteFill>
+      <div style={{ position: "absolute", left: 1330, top: 330, width: 520, opacity: listOut }}>
+        {reasons.map((r, i) => (
+          <div key={r.phrase} style={{ marginTop: i ? 44 : 0 }}>
+            <Rise delay={at("assign", r.phrase) - 2} y={18}>
+              <div style={{ display: "flex", gap: 18 }}>
+                <div style={{ width: 6, borderRadius: 3, background: C.signal, flexShrink: 0 }} />
+                <div>
+                  <div style={{ fontFamily: display, fontWeight: 800, fontSize: 38, color: "#fff", lineHeight: 1.1 }}>{r.title}</div>
+                  <div style={{ ...T.lead, fontSize: 27, marginTop: 6 }}>{r.why}</div>
+                </div>
+              </div>
+            </Rise>
+          </div>
+        ))}
       </div>
-      <Enter delay={0} y={60} style={{ left: (1920 - w) / 2, top: 110 }}>
-        <IPad shots={shots} scale={1.06} />
+      <Enter delay={sees - 6} y={80} style={{ left: 1390, top: 150 }}>
+        <Phone shots={[{ src: "p-assigned", at: 0 }]} scale={0.9} />
       </Enter>
     </Scene>
   );
@@ -462,16 +501,22 @@ export function Tests() {
 
 // ---------------------------------------------------------------- 7. The drive
 
+// One short moment from each assigned drive, in drive time (8 s per drive at 1x).
 const clips = [
-  { from: 0, to: 120, t0: 1.3 },
-  { from: 120, to: 220, t0: 16.4 },
-  { from: 220, to: 315, t0: 24.6 },
-];
+  { len: 34, t0: 1.6 }, // brake reaction: the light turns red
+  { len: 34, t0: 8.9 }, // left turns across traffic
+  { len: 30, t0: 16.8 }, // lane changes
+  { len: 30, t0: 24.5 }, // spotting objects
+  { len: 46, t0: 32.9 }, // night drive with glare
+  { len: 30, t0: 40.4 }, // city drive
+].reduce<{ from: number; to: number; t0: number }[]>((acc, c) => {
+  const from = acc.length ? acc[acc.length - 1].to : 0;
+  return [...acc, { from, to: from + c.len, t0: c.t0 }];
+}, []);
 
 export function Drive() {
   const frame = useCurrentFrame();
-  const total = sceneFrames("drive");
-  const pull = 300;
+  const pull = clips[clips.length - 1].to;
   const p = interpolate(frame, [pull, pull + 48], [0, 1], { extrapolateLeft: "clamp", extrapolateRight: "clamp", easing: easeInOut });
   const canvas = meta.liveCanvas as { x: number; y: number; w: number; h: number };
   // iPad final placement
@@ -488,17 +533,19 @@ export function Drive() {
   const s = s0 + (s1 - s0) * p;
   const x = x0 + (x1 - x0) * p;
   const y = y0 + (y1 - y0) * p;
-  const simT = 17.6 + Math.max(0, frame - pull) / FPS;
+  // The iPad screenshot is from the last drive; its canvas carries on from the last full-screen clip.
+  const last = clips[clips.length - 1];
+  const simT = last.t0 + (last.to - last.from + 8 + Math.max(0, frame - pull)) / FPS;
   return (
     <Scene id="drive" drift={0}>
       {frame < pull + 10 &&
         clips.map((c, i) => {
-          if (frame < c.from - 12 || frame > c.to + 12) return null;
+          if (frame < c.from - 8 || frame > c.to + 8) return null;
           const o = Math.min(
-            interpolate(frame, [c.from - 12, c.from + 4], [i === 0 ? 1 : 0, 1], { extrapolateLeft: "clamp", extrapolateRight: "clamp" }),
-            interpolate(frame, [c.to - 4, c.to + 12], [1, i === clips.length - 1 ? 1 : 0], { extrapolateLeft: "clamp", extrapolateRight: "clamp" }),
+            interpolate(frame, [c.from - 8, c.from + 2], [i === 0 ? 1 : 0, 1], { extrapolateLeft: "clamp", extrapolateRight: "clamp" }),
+            interpolate(frame, [c.to - 2, c.to + 8], [1, i === clips.length - 1 ? 1 : 0], { extrapolateLeft: "clamp", extrapolateRight: "clamp" }),
           );
-          const t = c.t0 + Math.max(0, frame - c.from + 12) / FPS;
+          const t = c.t0 + Math.max(0, frame - c.from + 8) / FPS;
           return (
             <AbsoluteFill key={i} style={{ opacity: o }}>
               <SimView t={t} width={1920} height={1080} />
@@ -515,11 +562,12 @@ export function Drive() {
         </div>
       )}
       <AbsoluteFill style={{ background: "radial-gradient(120% 90% at 50% 50%, rgba(0,0,0,0) 60%, rgba(0,0,0,0.35) 100%)", opacity: 1 - p }} />
-      <div style={{ position: "absolute", right: 90, top: 70, opacity: 1 - p }}>
-        <Kicker delay={6} textColor="#fff">The drive</Kicker>
+      <div style={{ position: "absolute", right: 70, top: 56, opacity: interpolate(frame, [pull - 8, pull + 6], [1, 0], { extrapolateLeft: "clamp", extrapolateRight: "clamp" }) }}>
+        <div style={{ background: "rgba(20,25,30,0.82)", borderRadius: 999, padding: "12px 28px" }}>
+          <Kicker delay={6} textColor="#fff">Six assigned drives</Kicker>
+        </div>
       </div>
-      {frame >= pull + 40 && <Callout text="Every result streams live to the specialist" delay={pull + 44} style={{ left: x1 + 30, top: 1010 }} />}
-      {frame > total && null}
+      {frame >= pull + 40 && <Callout text="Each score appears as its drive finishes" delay={pull + 44} style={{ left: x1 + 30, top: 1010 }} />}
     </Scene>
   );
 }
@@ -530,9 +578,9 @@ export function Record() {
   const frame = useCurrentFrame();
   const rows = [
     { t: "Intake answers", s: "Patient reported" },
-    { t: "Tablet tests", s: "iPad, Room 204" },
-    { t: "Hands-on checks", s: "Entered by Dana Ruiz" },
-    { t: "Simulator drive", s: "Simulator 1, session file" },
+    { t: "Assigned drives", s: "Chosen by Dana Ruiz, with her reasons" },
+    { t: "Drive results", s: "What was measured, and the rule for each score" },
+    { t: "Simulator session", s: "Simulator 1, the full session file" },
   ];
   return (
     <Scene id="record" drift={0.02}>
@@ -546,8 +594,8 @@ export function Record() {
         />
       </Enter>
       <RoadLine d="M1040 540 C 1110 540, 1130 540, 1200 540" start={14} duration={22} />
-      <Enter delay={8} style={{ left: 1210, top: 250 }}>
-        <div style={{ width: 600, borderRadius: 32, background: "#fff", padding: "34px 36px", boxShadow: "0 50px 100px -30px rgba(0,0,0,0.6)" }}>
+      <Enter delay={8} style={{ left: 1210, top: 240 }}>
+        <div style={{ width: 620, borderRadius: 32, background: "#fff", padding: "34px 36px", boxShadow: "0 50px 100px -30px rgba(0,0,0,0.6)" }}>
           <HealthKeyLogo height={40} light={false} />
           <div style={{ fontFamily: display, fontWeight: 800, fontSize: 38, color: C.asphalt, marginTop: 24 }}>Margaret's health record</div>
           <div style={{ marginTop: 18 }}>
@@ -556,7 +604,7 @@ export function Record() {
               const o = interpolate(frame, [d, d + 14], [0, 1], { extrapolateLeft: "clamp", extrapolateRight: "clamp", easing: ease });
               return (
                 <div key={r.t} style={{ display: "flex", alignItems: "center", gap: 18, padding: "16px 0", borderTop: i ? "1px solid #E1E4E2" : "none", opacity: o, transform: `translateX(${(1 - o) * 20}px)` }}>
-                  <div style={{ width: 34, height: 34, borderRadius: 17, background: C.hk, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                  <div style={{ width: 34, height: 34, flexShrink: 0, borderRadius: 17, background: C.hk, display: "flex", alignItems: "center", justifyContent: "center" }}>
                     <svg width="18" height="18" viewBox="0 0 24 24">
                       <path d="M5 12.5l4.5 4.5L19 7.5" fill="none" stroke="#fff" strokeWidth="3.2" strokeLinecap="round" strokeLinejoin="round" />
                     </svg>
@@ -577,70 +625,104 @@ export function Record() {
 
 // ---------------------------------------------------------------- 9. Review and sign
 
-export function Review() {
+/** A kicker shown between two frames, fading at both ends. */
+function Label({ from, to, style, children }: { from: number; to: number; style: CSSProperties; children: ReactNode }) {
   const frame = useCurrentFrame();
-  const suggests = at("review", "DriverScore suggests");
-  const decides = at("review", "but the specialist decides");
+  const o = interpolate(frame, [from, from + 12, to - 10, to], [0, 1, 1, 0], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
+  if (o <= 0) return null;
+  return (
+    <div style={{ position: "absolute", opacity: o, ...style }}>
+      <Kicker delay={from}>{children}</Kicker>
+    </div>
+  );
+}
+
+export function Review() {
+  const measured = at("review", "what was measured");
+  const steps = at("review", "DriverScore shows each step");
+  const suggests = at("review", "suggests an outcome");
+  const decides = at("review", "But the specialist decides");
   const chooses = at("review", "She chooses");
   const signs = at("review", "and signs");
+  const sc = 1.06;
+  const { w } = ipadSize(sc);
+  const L = (1920 - w) / 2;
+  const Tp = 110;
+  const row = onIpad(L, Tp, sc, 565, 578);
+  const why = onIpad(L, Tp, sc, 565, 700);
+  const decision = onIpad(L, Tp, sc, 1010, 200);
+  const signArea = onIpad(L, Tp, sc, 1010, 690);
+  const cam = useCamera([
+    { f: 0, s: 1, F: [960, 540] },
+    { f: measured - 14, s: 1, F: [960, 540] },
+    { f: measured + 14, s: 1.32, F: row, P: [960, 560] },
+    { f: steps - 8, s: 1.32, F: row, P: [960, 560] },
+    { f: steps + 16, s: 1.32, F: why, P: [960, 600] },
+    { f: suggests + 8, s: 1.32, F: why, P: [960, 600] },
+    { f: decides - 4, s: 1.3, F: decision, P: [960, 520] },
+    { f: signs - 14, s: 1.3, F: decision, P: [960, 520] },
+    { f: signs + 8, s: 1.3, F: signArea, P: [960, 560] },
+    { f: signs + 34, s: 1.3, F: signArea, P: [960, 560] },
+    { f: signs + 60, s: 1, F: [960, 540] },
+  ]);
   const shots: Shot[] = [
     { src: "i-review-blank", at: 0 },
+    { src: "i-review-row", at: measured - 10, motion: "fade" },
+    { src: "i-review-blank", at: steps - 6, motion: "fade" },
     { src: "i-review-chosen", at: chooses, motion: "fade" },
     { src: "i-review-signed", at: signs - 6, motion: "fade" },
-    { src: "i-released", at: signs + 40 },
+    { src: "i-released", at: signs + 46 },
   ];
-  const zin = interpolate(frame, [suggests - 10, suggests + 26], [1, 1.32], { extrapolateLeft: "clamp", extrapolateRight: "clamp", easing: easeInOut });
-  const zout = interpolate(frame, [signs + 26, signs + 52], [0, 1], { extrapolateLeft: "clamp", extrapolateRight: "clamp", easing: easeInOut });
-  const z = zin + (1 - zin) * zout;
-  const { w } = ipadSize(1.06);
   return (
     <Scene id="review" drift={0.01}>
-      <div style={{ position: "absolute", left: (1920 - w) / 2, top: 110, transform: `scale(${z})`, transformOrigin: "86% 40%" }}>
-        <Enter delay={0} y={50} style={{ position: "relative" }}>
-          <IPad shots={shots} scale={1.06}>
-            <Highlight x={865} y={80} w={290} h={232} delay={suggests + 8} radius={16} />
+      <AbsoluteFill style={cam}>
+        <Enter delay={0} y={50} style={{ left: L, top: Tp }}>
+          <IPad shots={shots} scale={sc}>
+            <Highlight x={338} y={490} w={454} h={178} delay={measured + 10} radius={16} />
+            <Highlight x={330} y={603} w={470} h={190} delay={steps + 12} radius={18} />
+            <Highlight x={865} y={80} w={290} h={232} delay={decides} radius={16} />
           </IPad>
         </Enter>
-      </div>
-      <div style={{ position: "absolute", left: 0, right: 0, top: 26, display: "flex", justifyContent: "center", zIndex: 20 }}>
-        <Beats
-          style={{ position: "relative", width: 900, height: 70 }}
-          items={[
-            { at: 0, node: <div style={{ display: "flex", justifyContent: "center" }}><div style={{ background: "rgba(20,25,30,0.88)", borderRadius: 999, padding: "10px 26px", boxShadow: "0 10px 30px rgba(0,0,0,0.35)" }}><Kicker>Review and sign</Kicker></div></div> },
-            { at: suggests, node: <div style={{ display: "flex", justifyContent: "center" }}><div style={{ background: "rgba(20,25,30,0.88)", borderRadius: 999, padding: "10px 26px", boxShadow: "0 10px 30px rgba(0,0,0,0.35)" }}><Kicker>The score suggests an outcome</Kicker></div></div> },
-            { at: decides, node: <div style={{ display: "flex", justifyContent: "center" }}><div style={{ background: "rgba(20,25,30,0.88)", borderRadius: 999, padding: "10px 26px", boxShadow: "0 10px 30px rgba(0,0,0,0.35)" }}><Kicker>The specialist decides</Kicker></div></div> },
-            { at: signs - 6, node: <div style={{ display: "flex", justifyContent: "center" }}><div style={{ background: "rgba(20,25,30,0.88)", borderRadius: 999, padding: "10px 26px", boxShadow: "0 10px 30px rgba(0,0,0,0.35)" }}><Kicker>She signs</Kicker></div></div> },
-          ]}
-        />
-      </div>
+      </AbsoluteFill>
+      <Label from={4} to={measured - 12} style={{ left: 0, right: 0, top: 40, display: "flex", justifyContent: "center" }}>
+        Every score explains itself
+      </Label>
+      <Label from={decides + 6} to={signs - 16} style={{ left: 1270, top: 470 }}>
+        The specialist decides
+      </Label>
+      <Label from={signs - 4} to={signs + 36} style={{ left: 1270, top: 650 }}>
+        She signs
+      </Label>
     </Scene>
   );
 }
 
 // ---------------------------------------------------------------- 10. Clear
 
-function Bars({ delay }: { delay: number }) {
+function DriveBars({ delay }: { delay: number }) {
   const frame = useCurrentFrame();
   const rows = [
-    { l: "Vision", v: 18, m: 20 },
-    { l: "Thinking and memory", v: 17.6, m: 20 },
-    { l: "Strength and movement", v: 19, m: 20 },
-    { l: "Simulator drive", v: 35, m: 40 },
+    { l: "Brake reaction", v: 10 },
+    { l: "Left turns across traffic", v: 9 },
+    { l: "Lane changes", v: 9 },
+    { l: "Spotting objects", v: 9 },
+    { l: "Night drive with glare", v: 8 },
+    { l: "City drive", v: 10 },
   ];
   return (
-    <div style={{ width: 560 }}>
+    <div style={{ width: 600 }}>
       {rows.map((r, i) => {
-        const p = interpolate(frame, [delay + i * 6, delay + i * 6 + 30], [0, 1], { extrapolateLeft: "clamp", extrapolateRight: "clamp", easing: ease });
+        const p = interpolate(frame, [delay + i * 5, delay + i * 5 + 28], [0, 1], { extrapolateLeft: "clamp", extrapolateRight: "clamp", easing: ease });
         return (
-          <div key={r.l} style={{ marginTop: i ? 22 : 0, opacity: Math.min(1, p * 2) }}>
-            <div style={{ display: "flex", justifyContent: "space-between", fontFamily: body, fontSize: 25, color: "#fff" }}>
+          <div key={r.l} style={{ marginTop: i ? 16 : 0, opacity: Math.min(1, p * 2) }}>
+            <div style={{ display: "flex", justifyContent: "space-between", fontFamily: body, fontSize: 24, color: "#fff" }}>
               <span style={{ fontWeight: 700 }}>{r.l}</span>
               <span style={{ fontFamily: display, fontWeight: 800 }}>
-                {r.v} <span style={{ fontFamily: body, fontWeight: 400, color: "rgba(255,255,255,0.55)" }}>of {r.m}</span>
+                {r.v} <span style={{ fontFamily: body, fontWeight: 400, color: "rgba(255,255,255,0.55)" }}>of 10</span>
               </span>
             </div>
-            <div style={{ height: 10, borderRadius: 5, background: "rgba(255,255,255,0.12)", marginTop: 10, overflow: "hidden" }}>
-              <div style={{ height: "100%", width: `${(r.v / r.m) * 100 * p}%`, background: "#fff", borderRadius: 5 }} />
+            <div style={{ height: 8, borderRadius: 4, background: "rgba(255,255,255,0.12)", marginTop: 8, overflow: "hidden" }}>
+              <div style={{ height: "100%", width: `${r.v * 10 * p}%`, background: "#fff", borderRadius: 4 }} />
             </div>
           </div>
         );
@@ -652,7 +734,8 @@ function Bars({ delay }: { delay: number }) {
 export function Clear() {
   const arrives = at("clear", "Margaret's result arrives");
   const clear = at("clear", "She's clear to drive");
-  const steps = at("clear", "Her next steps");
+  const drives = at("clear", "Each drive is explained");
+  const steps = at("clear", "her next steps");
   return (
     <Scene id="clear" drift={0.02}>
       <Enter delay={0} style={{ left: 250, top: 100 }}>
@@ -660,25 +743,25 @@ export function Clear() {
           scale={1}
           shots={[
             { src: "p-result-clear", at: 0 },
+            { src: "p-result-clear-drives", at: drives - 4, motion: "scroll" },
             { src: "p-result-clear-steps", at: steps, motion: "scroll" },
           ]}
         />
       </Enter>
-      <div style={{ position: "absolute", left: 980, top: 120 }}>
+      <div style={{ position: "absolute", left: 980, top: 110 }}>
         <Rise delay={arrives}>
           <Kicker>Her result</Kicker>
         </Rise>
-        <div style={{ marginTop: 22 }}>
-          <Gauge value={90} delay={clear} size={440} />
+        <div style={{ display: "flex", alignItems: "center", gap: 36, marginTop: 18 }}>
+          <Gauge value={92} delay={clear} size={360} />
+          <Rise delay={clear + 20}>
+            <div style={{ fontFamily: display, fontWeight: 800, fontSize: 36, color: "#fff" }}>DriverScore</div>
+            <div style={{ ...T.lead, fontSize: 25, marginTop: 6, maxWidth: 300 }}>One part of Dana's decision</div>
+          </Rise>
         </div>
-        <Rise delay={clear + 20}>
-          <div style={{ fontFamily: display, fontWeight: 800, fontSize: 34, color: "#fff", marginTop: 4 }}>DriverScore</div>
-          <div style={{ ...T.lead, fontSize: 26, marginTop: 4 }}>One part of Dana's decision</div>
-        </Rise>
       </div>
-      <div style={{ position: "absolute", left: 1540, top: 300 }} />
-      <div style={{ position: "absolute", left: 980, top: 700 }}>
-        <Bars delay={clear + 34} />
+      <div style={{ position: "absolute", left: 980, top: 540 }}>
+        <DriveBars delay={clear + 30} />
       </div>
     </Scene>
   );

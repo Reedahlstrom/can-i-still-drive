@@ -3,6 +3,7 @@ import { useLayoutEffect, useRef, type CSSProperties, type ReactNode } from "rea
 import { AbsoluteFill, Easing, Img, interpolate, spring, staticFile, useCurrentFrame, useVideoConfig } from "remotion";
 import { render as renderSim } from "./sim/SimCanvas";
 import { presets } from "./data/scenarios";
+import { sortDrives, type DriveId } from "./data/drives";
 import { C, body, display } from "./theme";
 
 export const ease = Easing.bezier(0.22, 1, 0.36, 1);
@@ -296,12 +297,16 @@ export function Gauge({ value, delay = 0, size = 520, light = true }: { value: n
 
 // ---------- The real simulator renderer, driven by the frame ----------
 
+/** The drives the app recommends for Margaret, in the order they run. */
+export const ASSIGNED: DriveId[] = sortDrives(["reaction", "left", "lane", "fod", "night", "city"]);
+
+/** t is drive time across the assigned drives (8 s each at 1x), exactly as the app counts it. */
 export function SimView({ t, width, height, style }: { t: number; width: number; height: number; style?: CSSProperties }) {
   const ref = useRef<HTMLCanvasElement>(null);
   useLayoutEffect(() => {
     const c = ref.current!;
     const ctx = c.getContext("2d")!;
-    renderSim(ctx, c.width, c.height, t, presets.clear, { live: false, measured: null });
+    renderSim(ctx, c.width, c.height, t, ASSIGNED, presets.clear, { live: false, measured: null });
   }, [t]);
   return <canvas ref={ref} width={width * 2} height={height * 2} style={{ width, height, display: "block", ...style }} />;
 }
