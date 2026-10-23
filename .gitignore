@@ -7,3 +7,10 @@ dev-dist
 # Source documents are confidential: kept locally, never committed
 docs/source/
 .wrangler
+
+# Video build outputs and generated media
+video/out/
+video/public/vo/
+video/public/captures/
+video/public/music/
+video/.venv/

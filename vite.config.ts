@@ -6,6 +6,8 @@ import { VitePWA } from "vite-plugin-pwa";
 export default defineConfig({
   base: process.env.BASE_PATH ?? "/",
   build: { chunkSizeWarningLimit: 900 },
+  // The video project lives alongside; its files never affect the app.
+  server: { watch: { ignored: ["**/video/**", "**/docs/**"] } },
   plugins: [
     react(),
     tailwindcss(),
