@@ -2,7 +2,7 @@
 
 Live demo: https://can-i-still-drive.reedahlstrom.workers.dev
 
-Clickable prototype of DriverScore: a driving assessment done as part of a doctor's visit. The patient connects their health record through HealthKey, checks in at the hospital, takes tablet tests and a simulator drive, and gets a result their specialist has signed.
+Clickable prototype of DriverScore: a driving assessment done as part of a doctor's visit. The patient connects their health record through HealthKey and checks in at the hospital. The specialist reviews the record and assigns simulator drives, the patient drives them, and each drive comes back scored with what was measured and the rule behind it. The specialist decides, signs, and the patient gets the result.
 
 ## Run it
 
@@ -26,7 +26,7 @@ Tabs opened in the same browser stay on the same visit, so the phone, iPad and s
 
 Press the sliders button in the bottom-right corner of the stage (or the backtick key) to:
 
-- choose the result: Clear, With conditions, Pause, Time to stop, or Live (scores the tablet tests and brake reaction as they're taken)
+- choose the result: Clear, With conditions, Pause, Time to stop, or Live (measures your own brake tap at the red light)
 - jump to any step
 - run animations at 2x
 - start over
@@ -35,18 +35,26 @@ Press the sliders button in the bottom-right corner of the stage (or the backtic
 
 1. Patient: welcome, confirm details, verify phone
 2. Patient: connect health record with HealthKey (sources, sharing, gather)
-3. Patient: five driving questions
+3. Patient: driving questions
 4. Patient: check in at the hospital and pick a simulator
-5. Specialist: review record and answers, flags first
-6. Patient on the iPad: trails, clock drawing, signs, colors, driving questions
-7. Specialist: hands-on vision, cognition and motor scoring
-8. Simulator: six scored drives, live on the iPad
-9. Specialist: results saved to the record, review DriverScore v0, choose the outcome, sign
-10. Patient: signed result, next steps, health record, family sharing, and ride booking when it's time to stop
+5. Specialist: review the record and answers, flags first, and assign drives. The drives the record points to come pre-selected, each with its reason.
+6. Patient: sees which drives were chosen and why, says how she feels
+7. Simulator: the assigned drives, each scored live on the iPad as it finishes
+8. Specialist: results saved to the record; each drive's score with the measurement, rule and result; the logic behind the suggestion; choose the outcome, sign
+9. Patient: signed result with each drive explained, next steps, health record, family sharing, and ride booking when it's time to stop
 
 ## Scoring
 
-DriverScore v0 follows the CISD scoring sheet: vision 20, cognition 17 rescaled to 20, motor 20, simulator 40. Hard stops (very poor acuity, half the visual field missing, Trails B not finished, a collision or missed signal) override the total. The specialist chooses one of four outcomes; the score only suggests one. See `src/lib/score.ts`.
+DriverScore v0 scores only the drives the specialist assigned. Each drive is out of 10 and carries what was measured, the rule applied and the result; the total is their average, out of 100. Drives not completed are left out and reported, never counted as zero.
+
+The suggestion is worked out in order, and every step is shown to the specialist:
+
+1. A hard stop (ran the red light, a collision, rolled through a stop sign) suggests Time to stop.
+2. Fewer than 3 drives completed is too little to decide: Pause and reassess.
+3. A vision drive (spotting objects, night drive) below 5 suggests Pause and reassess.
+4. Otherwise 85 or higher with no drive below 6 suggests Clear, 70 to 84 Drive with conditions, 55 to 69 Pause, below 55 Time to stop.
+
+Conditions come from the drives: a weak night drive suggests daylight only, weak lane changes no highways, weak left turns or city driving staying within 15 miles of home. The specialist chooses the outcome; the score only suggests one. See `src/lib/score.ts` and `src/data/drives.ts`.
 
 All people, places and records in the demo are fictional.
 

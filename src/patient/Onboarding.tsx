@@ -47,7 +47,7 @@ function DrivingRoad() {
 
 export function Welcome() {
   const set = useDemo((s) => s.set);
-  useReadAloud("Can I still drive? A few short tests and a simulator drive with a driving specialist. You'll leave with a result and a plan, shared only with you and your doctor.");
+  useReadAloud("Can I still drive? A few simulator drives, chosen for you by a driving specialist. You'll leave with a result and a plan, shared only with you and your doctor.");
   return (
     <div className="relative flex h-full flex-col overflow-hidden bg-asphalt text-white">
       <div className="absolute inset-x-0 top-[17%] bottom-0">
@@ -60,7 +60,7 @@ export function Welcome() {
       <div className="relative mt-auto px-6 pb-[calc(var(--safe-bottom,0px)+18px)]">
         <h1 className="font-display text-[46px] leading-[1.02] font-extrabold tracking-[-0.02em]">Can I still drive?</h1>
         <p className="mt-4 text-[20px] leading-[1.45] text-white/75">
-          A few short tests and a simulator drive with a driving specialist. You'll leave with a result and a plan, shared only with you and your doctor.
+          A few simulator drives, chosen for you by a driving specialist. You'll leave with a result and a plan, shared only with you and your doctor.
         </p>
         <Button variant="signal" className="mt-8 w-full" onClick={() => set({ patientStep: "details" })}>
           Get started

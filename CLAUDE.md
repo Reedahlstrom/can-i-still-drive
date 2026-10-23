@@ -5,6 +5,7 @@ Demo prototype for partner presentations. Product name in the UI is DriverScore;
 ## Rules
 
 - The assessment happens as part of a doctor's visit at a hospital or clinic, not a pharmacy.
+- No tablet or paper tests. The specialist reviews the record and assigns simulator drives; the patient drives only those. Every score shows what was measured, the rule and the result.
 - Four outcomes, never pass/fail: Clear, Drive with conditions, Pause and reassess, Time to stop. The specialist chooses; the score suggests.
 - "Time to stop" leads with getting around (rides), score further down, and requires the in-person discussion checkbox before signing.
 - DriverScore is labeled "Version 0, not yet validated" wherever the number appears.
@@ -15,7 +16,8 @@ Demo prototype for partner presentations. Product name in the UI is DriverScore;
 ## Layout
 
 - `src/patient` patient phone app
-- `src/specialist` specialist iPad app (includes patient-mode tablet tests)
+- `src/specialist` specialist iPad app (record review and drive assignment, live drive, review and sign)
+- `src/data/drives.ts` the simulator drives and why each is recommended
 - `src/sim` simulator renderer and drive timeline
 - `src/stage` presenter stage, device frames, demo controls, full-screen simulator
 - `src/state/store.ts` shared visit state (zustand, synced across tabs)

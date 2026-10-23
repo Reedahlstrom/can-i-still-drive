@@ -2,9 +2,9 @@ import { Check, ChevronDown } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { useEffect, useRef, useState } from "react";
 import { patient, referringDoctor, specialist } from "../data/demo";
-import { conditionLibrary, outcomeCopy, planLibrary } from "../data/scenarios";
+import { conditionLibrary, draftNote, outcomeCopy, planLibrary } from "../data/scenarios";
 import { addMonths, shortDate, timeOf, today } from "../lib/dates";
-import type { Domain, Outcome } from "../lib/score";
+import type { DriveScore, Outcome } from "../lib/score";
 import { determinationFor, useDemo, useScore, type Determination } from "../state/store";
 import { HealthKeyLogo } from "../ui/Brand";
 import { Button, Segmented } from "../ui/primitives";
@@ -12,23 +12,22 @@ import { Gauge } from "../ui/Road";
 import { useAttention } from "./Intake";
 import { Card, Pane } from "./Shell";
 
-const fmt = (n: number) => (Number.isInteger(n) ? String(n) : n.toFixed(1));
 const outcomes: Outcome[] = ["clear", "conditions", "pause", "stop"];
 
-function DomainRow({ d }: { d: Domain }) {
+function DriveRow({ d }: { d: DriveScore }) {
   const [open, setOpen] = useState(false);
-  const low = d.max > 0 && d.points < d.max / 2;
+  const low = d.done && d.points < 6;
   return (
     <div>
-      <button onClick={() => setOpen(!open)} aria-expanded={open} className="flex w-full items-center gap-4 px-5 py-3.5 text-left">
-        <span className="w-28 text-[16px] font-semibold">{d.label}</span>
+      <button onClick={() => setOpen(!open)} aria-expanded={open} className="flex w-full items-center gap-4 px-5 py-3 text-left">
+        <span className="w-44 shrink-0 text-[15px] font-semibold leading-snug">{d.name}</span>
         <span className={`h-2 flex-1 overflow-hidden rounded-full ${low ? "bg-alert-tint" : "bg-mist"}`}>
-          <span className={`block h-full rounded-full ${low ? "bg-alert" : "bg-asphalt"}`} style={{ width: `${d.max ? (d.points / d.max) * 100 : 0}%` }} />
+          <span className={`block h-full rounded-full ${low ? "bg-alert" : "bg-asphalt"}`} style={{ width: `${d.done ? d.points * 10 : 0}%` }} />
         </span>
-        <span className="w-28 text-right font-display text-[16px] font-bold tnum">
-          {d.max ? (
+        <span className="w-24 text-right font-display text-[16px] font-bold tnum">
+          {d.done ? (
             <>
-              {fmt(d.points)} <span className="font-normal text-graphite">/ {fmt(d.max)}</span>
+              {d.points} <span className="font-normal text-graphite">/ 10</span>
             </>
           ) : (
             <span className="font-sans text-[14px] font-normal text-graphite">Not completed</span>
@@ -37,18 +36,18 @@ function DomainRow({ d }: { d: Domain }) {
         <ChevronDown size={18} className={`text-graphite transition-transform ${open ? "rotate-180" : ""}`} />
       </button>
       <AnimatePresence initial={false}>
-        {open && (
+        {open && d.done && (
           <motion.div initial={{ height: 0 }} animate={{ height: "auto" }} exit={{ height: 0 }} className="overflow-hidden">
-            <div className="mx-5 mb-3 divide-y divide-line rounded-xl bg-canvas">
-              {d.items.map((it) => (
-                <div key={it.id} className="flex items-center justify-between gap-3 px-4 py-2.5 text-[14px]">
-                  <span className="font-semibold">{it.label}</span>
-                  <span className="flex-1 truncate text-right text-graphite">{it.raw}</span>
-                  <span className="w-12 text-right font-display font-bold tnum">{it.done ? `${it.points}/${it.max}` : "—"}</span>
-                </div>
-              ))}
-              {d.id === "cognition" && <div className="px-4 py-2.5 text-[13px] text-graphite">Sheet items total 17. Version 0 rescales cognition to 20.</div>}
-            </div>
+            <dl className="mx-5 mb-3 grid grid-cols-[88px_1fr] gap-x-3 gap-y-1.5 rounded-xl bg-canvas px-4 py-3 text-[14px] leading-snug">
+              <dt className="font-semibold text-graphite">Measured</dt>
+              <dd>{d.metrics}</dd>
+              <dt className="font-semibold text-graphite">Rule</dt>
+              <dd>{d.rule}</dd>
+              <dt className="font-semibold text-graphite">Result</dt>
+              <dd className="font-semibold">
+                {d.reason} {d.points} of 10.
+              </dd>
+            </dl>
           </motion.div>
         )}
       </AnimatePresence>
@@ -155,18 +154,23 @@ export function ReviewSign() {
   // Any change after signing voids the signature.
   const update = (p: Partial<Determination>) => set({ determination: { ...d, ...p, signature: "signature" in p ? (p.signature ?? null) : null } });
   const pickOutcome = (o: Outcome) => {
-    const edited = d.outcome ? d.note !== outcomeCopy[d.outcome].note : d.note.trim() !== "";
-    const next = determinationFor(o);
+    const edited = d.outcome ? d.note !== draftNote(d.outcome, result) : d.note.trim() !== "";
+    const next = determinationFor(o, result);
     set({ determination: { ...next, note: edited ? d.note : next.note, noteFor: edited ? (d.noteFor ?? d.outcome) : o, reasoning: d.reasoning, signature: null } });
   };
   const toggle = (list: string[], v: string) => (list.includes(v) ? list.filter((x) => x !== v) : [...list, v]);
 
   const hardStops = result.findings.filter((f) => f.kind === "hardStop");
   const flags = result.findings.filter((f) => f.kind === "flag");
-  const sim = result.domains.find((x) => x.id === "simulator")!;
   const needsTalk = d.outcome === "stop" || d.outcome === "pause";
   const differs = d.outcome !== null && d.outcome !== result.suggested;
-  const canSign = d.outcome !== null && !!d.signature && (!needsTalk || d.discussed) && (!differs || d.reasoning.trim().length > 0) && d.note.trim().length > 0;
+  const canSign =
+    d.outcome !== null &&
+    !!d.signature &&
+    (!needsTalk || d.discussed) &&
+    (!differs || d.reasoning.trim().length > 0) &&
+    (d.outcome !== "conditions" || d.conditions.length > 0) &&
+    d.note.trim().length > 0;
 
   const sign = () => set({ phase: "released", tab: "home", determination: { ...d, signedAt: Date.now() } });
 
@@ -194,26 +198,44 @@ export function ReviewSign() {
           )}
           <Card>
             <div className="flex items-center gap-6 px-5 pt-4 pb-2">
-              <Gauge value={result.total} max={result.possible} size={150} delay={0.1} />
+              <Gauge value={result.total} size={150} delay={0.1} />
               <div>
-                <div className="font-display text-[22px] font-extrabold">
-                  DriverScore {result.total}
-                  {result.incomplete && <span className="font-normal text-graphite"> of {result.possible}</span>}
+                <div className="font-display text-[22px] font-extrabold">DriverScore {result.total}</div>
+                <div className="text-[14px] text-graphite">
+                  Average of {result.completed} {result.completed === 1 ? "drive" : "drives"}, each out of 10. Version 0, not yet validated. Tap a drive for its measurement and rule.
                 </div>
-                <div className="text-[14px] text-graphite">Version 0, not yet validated. It suggests an outcome; you decide.</div>
               </div>
             </div>
             <div className="divide-y divide-line border-t border-line pb-1">
-              {result.domains.map((dm) => (
-                <DomainRow key={dm.id} d={dm} />
+              {result.drives.map((dr) => (
+                <DriveRow key={dr.id} d={dr} />
               ))}
             </div>
+          </Card>
+          <Card title="Why this suggestion" className="mt-5">
+            <ol className="px-5 pt-1 pb-4">
+              {result.logic.map((step, i) => {
+                const last = i === result.logic.length - 1;
+                return (
+                  <li key={step.text} className="flex items-start gap-3 py-1.5">
+                    <span
+                      className={`mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-full font-display text-[11px] font-bold ${
+                        last ? "bg-asphalt text-white" : step.pass ? "bg-mist text-asphalt" : "bg-alert-tint text-alert"
+                      }`}
+                    >
+                      {i + 1}
+                    </span>
+                    <span className={`text-[15px] leading-snug ${last ? "font-semibold" : ""}`}>{step.text}</span>
+                  </li>
+                );
+              })}
+            </ol>
           </Card>
           <div className="mt-5 grid grid-cols-2 gap-5">
             <Card title="Self-rating">
               <div className="px-5 pt-1 pb-4 text-[16px] leading-snug">
                 {selfRating ? `${patient.first} rated her drive ${selfRating} of 5` : "Not given yet"}
-                {postFeel ? `, felt ${postFeel.toLowerCase()}.` : "."} Simulator: {sim.points} of {sim.max}.
+                {postFeel ? `, felt ${postFeel.toLowerCase()}.` : "."} DriverScore {result.total}.
               </div>
             </Card>
             <Card title="From her record">
@@ -298,7 +320,7 @@ export function ReviewSign() {
               )}
 
               <h2 className={`mt-6 ${label}`}>Note to {patient.first}</h2>
-              <p className="text-[13px] text-graphite">She sees this under your name. It starts from a template: delete anything that didn't happen today.</p>
+              <p className="text-[13px] text-graphite">She sees this under your name. Drafted from her drives. Change anything you'd say differently.</p>
               {d.noteFor && d.noteFor !== d.outcome && (
                 <p className="mt-1 rounded-lg bg-signal-soft px-3 py-2 text-[13px] font-semibold text-signal-ink">Written for {outcomeCopy[d.noteFor].label}. Reread before signing.</p>
               )}
@@ -320,8 +342,7 @@ export function ReviewSign() {
               <span className="font-semibold">{outcomeCopy[d.outcome].title}</span>
               <span className="text-graphite">
                 {" "}
-                Then your note,{d.outcome === "conditions" ? " her limits," : ""} next steps,{needsTalk ? " ride options," : ""} and DriverScore {result.total}
-                {result.incomplete ? ` of ${result.possible}` : ""} with four section scores.
+                Then your note,{d.outcome === "conditions" ? " her limits," : ""} next steps,{needsTalk ? " ride options," : ""} and DriverScore {result.total} with each drive's score and a plain reason.
               </span>
             </div>
           )}
@@ -361,7 +382,6 @@ export function Released() {
               <div className="font-display text-[26px] font-extrabold">{outcomeCopy[d.outcome].label}</div>
               <div className="text-[16px] text-graphite">
                 DriverScore {result.total}
-                {result.incomplete ? ` of ${result.possible}` : ""}
                 {d.retestMonths > 0 ? `, re-test by ${shortDate(addMonths(signed, d.retestMonths))}` : ""}
               </div>
             </div>

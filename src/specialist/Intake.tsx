@@ -1,4 +1,7 @@
+import { Check } from "lucide-react";
 import { motion } from "motion/react";
+import { useState } from "react";
+import { DRIVES, recommendDrives, sortDrives, type DriveId } from "../data/drives";
 import { patient, questions, record, referringDoctor, schedule, sources, visit } from "../data/demo";
 import { longDate, today } from "../lib/dates";
 import { useDemo } from "../state/store";
@@ -101,6 +104,70 @@ export function useAttention() {
   return items;
 }
 
+function useRecommended() {
+  const answers = useDemo((s) => s.answers);
+  const shared = useSharedRecord();
+  return recommendDrives({
+    cataract: shared.conditions.some((c) => c.name.startsWith("Cataract")),
+    sleepMed: shared.medicines.some((m) => m.name.startsWith("Zolpidem")),
+    answers,
+  });
+}
+
+function AssignDrives({ picked, toggle, locked }: { picked: DriveId[]; toggle: (id: DriveId) => void; locked: boolean }) {
+  const recs = useRecommended();
+  const recById = Object.fromEntries(recs.map((r) => [r.id, r]));
+  const minutes = DRIVES.filter((d) => picked.includes(d.id)).reduce((a, d) => a + d.minutes, 0);
+  const list = locked ? DRIVES.filter((d) => picked.includes(d.id)) : DRIVES;
+
+  return (
+    <Card
+      title={locked ? "Assigned drives" : "Assign drives"}
+      aside={
+        <span className="text-[14px] text-graphite">
+          {picked.length} {picked.length === 1 ? "drive" : "drives"}, about {minutes} min
+        </span>
+      }
+    >
+      {!locked && picked.length < 3 && <p className="px-5 pb-2 text-[13px] text-graphite">DriverScore needs at least 3 drives to suggest an outcome.</p>}
+      <div className="divide-y divide-line pb-1">
+        {list.map((d) => {
+          const on = picked.includes(d.id);
+          const rec = recById[d.id];
+          return (
+            <button
+              key={d.id}
+              role="checkbox"
+              aria-checked={on}
+              disabled={locked}
+              onClick={() => toggle(d.id)}
+              className={`flex w-full gap-3.5 px-5 py-3 text-left transition-colors ${locked ? "" : "hover:bg-canvas"}`}
+            >
+              {!locked && (
+                <span className={`mt-0.5 flex size-6 shrink-0 items-center justify-center rounded-md ${on ? "bg-asphalt text-white" : "border-2 border-line-strong"}`}>{on && <Check size={16} strokeWidth={3} />}</span>
+              )}
+              <span className="min-w-0 flex-1">
+                <span className="flex items-center gap-2">
+                  <span className="text-[16px] font-semibold">{d.name}</span>
+                  {rec && !locked && <span className="rounded-md bg-signal-soft px-1.5 py-0.5 text-[11px] font-bold text-signal-ink">Recommended</span>}
+                </span>
+                <span className="block text-[13px] text-graphite">{d.measures}</span>
+                {rec?.reasons.map((r) => (
+                  <span key={r} className="mt-0.5 flex items-start gap-1.5 text-[13px] leading-snug">
+                    <span className="mt-[5px] h-2.5 w-0.5 shrink-0 rounded-full bg-signal" />
+                    {r}
+                  </span>
+                ))}
+              </span>
+              <span className="shrink-0 text-[13px] text-graphite tnum">{d.minutes} min</span>
+            </button>
+          );
+        })}
+      </div>
+    </Card>
+  );
+}
+
 export function RecordReview() {
   const go = useDemo((s) => s.go);
   const answers = useDemo((s) => s.answers);
@@ -108,6 +175,16 @@ export function RecordReview() {
   const hk = shared.on;
   const reviewing = useDemo((s) => s.determination !== null);
   const attention = useAttention();
+  const current = useDemo((s) => s.assigned);
+  const recs = useRecommended();
+  const [picked, setPicked] = useState<DriveId[]>(() => (current.length ? current : recs.map((r) => r.id)));
+  const toggle = (id: DriveId) => setPicked((p) => (p.includes(id) ? p.filter((x) => x !== id) : [...p, id]));
+  const assign = () => {
+    const next = sortDrives(picked);
+    // A changed set goes back to the patient so she sees the new drives before saying how she feels.
+    const changed = next.join() !== current.join();
+    go("pre-drive", { assigned: next, simStart: null, drivesCompleted: null, hardStopSeen: false, ...(changed ? { preDriveFeeling: null } : {}) });
+  };
   return (
     <Pane
       title={`${patient.first} ${patient.last}`}
@@ -116,24 +193,34 @@ export function RecordReview() {
         reviewing ? (
           <Button size="md" onClick={() => go("review")}>Back to review</Button>
         ) : (
-          <Button size="md" onClick={() => go("tablet-tests", { tabletStep: "handoff" })}>Start tablet tests</Button>
+          <Button size="md" disabled={!picked.length} onClick={assign}>
+            Assign {picked.length} {picked.length === 1 ? "drive" : "drives"}
+          </Button>
         )
       }
     >
-      <div className="grid grid-cols-[1.25fr_1fr] gap-5">
+      <div className="grid grid-cols-[1fr_1.12fr] gap-5">
         <div className="flex flex-col gap-5">
           <Card title="Needs attention">
             <div className="divide-y divide-line pb-1">
               {attention.map((a) => (
-                <div key={a.title} className="flex gap-4 px-5 py-3.5">
+                <div key={a.title} className="flex gap-4 px-5 py-3">
                   <span className="mt-1.5 h-4 w-1 shrink-0 rounded-full bg-signal" />
                   <div>
-                    <div className="text-[17px] font-semibold leading-snug">{a.title}</div>
-                    <div className="text-[15px] leading-snug">{a.detail}</div>
-                    <div className="mt-0.5 text-[13px] text-graphite">{a.source}</div>
+                    <div className="text-[16px] font-semibold leading-snug">{a.title}</div>
+                    <div className="text-[14px] leading-snug">{a.detail}</div>
+                    <div className="mt-0.5 text-[12px] text-graphite">{a.source}</div>
                   </div>
                 </div>
               ))}
+            </div>
+          </Card>
+          <Card title="Her answers">
+            <div className="divide-y divide-line pb-1">
+              {questions.map((q) => {
+                const a = answers[q.id];
+                return <Line key={q.id} title={Array.isArray(a) ? a.join(", ") : a ?? "Not answered"} detail={q.prompt} />;
+              })}
             </div>
           </Card>
           {hk ? (
@@ -152,6 +239,17 @@ export function RecordReview() {
                   ))}
                 </div>
               </Card>
+              <Card title="Eye exams">
+                <div className="divide-y divide-line pb-1">
+                  {shared.eyes.map((m) => (
+                    <Line key={m.date} title={m.date} detail={m.detail} source={m.source} />
+                  ))}
+                </div>
+              </Card>
+              <div className="flex flex-wrap items-center gap-x-2 gap-y-1 px-1 text-[14px] text-graphite">
+                <HealthKeyLogo height={18} />
+                <span>{sources.map((s) => s.name).join(", ")}</span>
+              </div>
             </>
           ) : (
             <Card title="Health record">
@@ -160,32 +258,9 @@ export function RecordReview() {
           )}
         </div>
         <div className="flex flex-col gap-5">
-          <Card title="Her answers">
-            <div className="divide-y divide-line pb-1">
-              {questions.map((q) => {
-                const a = answers[q.id];
-                return <Line key={q.id} title={Array.isArray(a) ? a.join(", ") : a ?? "Not answered"} detail={q.prompt} />;
-              })}
-            </div>
-          </Card>
-          {hk && (
-            <Card title="Eye exams">
-              <div className="divide-y divide-line pb-1">
-                {shared.eyes.map((m) => (
-                  <Line key={m.date} title={m.date} detail={m.detail} source={m.source} />
-                ))}
-              </div>
-            </Card>
-          )}
-          {hk && (
-            <div className="flex flex-wrap items-center gap-x-2 gap-y-1 px-1 text-[14px] text-graphite">
-              <HealthKeyLogo height={18} />
-              <span>{sources.map((s) => s.name).join(", ")}</span>
-            </div>
-          )}
+          <AssignDrives picked={picked} toggle={toggle} locked={reviewing} />
         </div>
       </div>
     </Pane>
   );
 }
-

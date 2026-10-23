@@ -1,65 +1,22 @@
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 import { defaultAnswers, patient } from "../data/demo";
-import { outcomeCopy, presets, type ScenarioKey } from "../data/scenarios";
-import { score, type Outcome, type Raw } from "../lib/score";
+import { recommendDrives, sortDrives, type DriveId } from "../data/drives";
+import { draftNote, outcomeCopy, presets, type ScenarioKey } from "../data/scenarios";
+import { score, type DriveRaw, type Outcome, type ScoreResult } from "../lib/score";
 
-export type Phase =
-  | "onboarding"
-  | "ready"
-  | "checked-in"
-  | "record-review"
-  | "tablet-tests"
-  | "hands-on"
-  | "pre-drive"
-  | "driving"
-  | "post-drive"
-  | "uploading"
-  | "review"
-  | "released";
+export type Phase = "onboarding" | "ready" | "checked-in" | "record-review" | "pre-drive" | "driving" | "post-drive" | "uploading" | "review" | "released";
 
-export const phaseOrder: Phase[] = [
-  "onboarding",
-  "ready",
-  "checked-in",
-  "record-review",
-  "tablet-tests",
-  "hands-on",
-  "pre-drive",
-  "driving",
-  "post-drive",
-  "uploading",
-  "review",
-  "released",
-];
+export const phaseOrder: Phase[] = ["onboarding", "ready", "checked-in", "record-review", "pre-drive", "driving", "post-drive", "uploading", "review", "released"];
 
 export const atLeast = (phase: Phase, min: Phase) => phaseOrder.indexOf(phase) >= phaseOrder.indexOf(min);
 
-export type PatientStep =
-  | "welcome"
-  | "details"
-  | "code"
-  | "hk-intro"
-  | "hk-connected"
-  | "questions"
-  | "home"
-  | "where"
-  | "which-sim"
-  | "connecting";
+export type PatientStep = "welcome" | "details" | "code" | "hk-intro" | "hk-connected" | "questions" | "home" | "where" | "which-sim" | "connecting";
 
 export type HkStep = null | "signin" | "sources" | "share" | "assembling";
-export type TabletStep = "handoff" | "trails" | "clock" | "signs" | "colors" | "choice" | "done";
 export type Tab = "home" | "record" | "family";
 
-export type Live = {
-  trailsSeconds?: number | null;
-  trailsErrors?: number;
-  clock?: string;
-  signs?: number;
-  colors?: number;
-  choice?: number;
-  reactionMs?: number;
-};
+export type Live = { reactionMs?: number };
 
 export type Determination = {
   outcome: Outcome | null;
@@ -94,17 +51,19 @@ type Data = {
   answers: Record<string, string | string[]>;
   location: string | null;
   simulator: string | null;
-  tabletStep: TabletStep;
+  /** Drives the specialist assigned, in simulator order. */
+  assigned: DriveId[];
   live: Live;
-  handsOn: Partial<Raw>;
   preDriveFeeling: string | null;
   postFeel: string | null;
   selfRating: number | null;
   simStart: number | null;
   drivesCompleted: number | null;
-  collisionSeen: boolean;
+  hardStopSeen: boolean;
   determination: Determination | null;
   ride: Ride;
+  /** Bumped on every jump or restart so screens drop their local state. */
+  visit: number;
   familyShare: Record<string, boolean>;
   hkSharing: boolean;
 };
@@ -118,12 +77,12 @@ type Actions = {
   jump: (stage: JumpStage) => void;
 };
 
-export type JumpStage = "start" | "healthkey" | "checkin" | "tests" | "drive" | "review" | "results";
+export type JumpStage = "start" | "healthkey" | "checkin" | "assign" | "drive" | "review" | "results";
 export const jumpLabels: Record<JumpStage, string> = {
   start: "Start",
   healthkey: "Health record",
   checkin: "Check in",
-  tests: "Tablet tests",
+  assign: "Assign drives",
   drive: "Simulator",
   review: "Review and sign",
   results: "Results",
@@ -145,40 +104,30 @@ const initial: Data = {
   answers: {},
   location: null,
   simulator: null,
-  tabletStep: "handoff",
+  assigned: [],
   live: {},
-  handsOn: {},
   preDriveFeeling: null,
   postFeel: null,
   selfRating: null,
   simStart: null,
   drivesCompleted: null,
-  collisionSeen: false,
+  hardStopSeen: false,
   determination: null,
   ride: null,
   familyShare: { results: false, rides: false },
   hkSharing: true,
+  visit: 0,
 };
 
-export function rawFor(s: Pick<Data, "scenario" | "live" | "handsOn"> & { drivesCompleted?: number | null; collisionSeen?: boolean }): Raw {
-  const completedDrives = s.drivesCompleted ?? undefined;
-  const collisionSeen = !!s.collisionSeen;
-  if (s.scenario !== "live") return { ...presets[s.scenario], ...s.handsOn, completedDrives, collisionSeen };
-  const l = s.live;
-  const base: Raw = {
-    ...presets.clear,
-    completedDrives,
-    collisionSeen,
-    trailsSeconds: l.trailsSeconds === undefined ? undefined : l.trailsSeconds,
-    trailsErrors: l.trailsErrors,
-    trailsShort: true,
-    signs: l.signs,
-    colors: l.colors,
-    choice: l.choice,
-    reactionMs: l.reactionMs,
-  };
-  return { ...base, ...s.handsOn };
+/** The measured results of every drive for the chosen demo story. Live mode uses the real brake tap. */
+export function resultsFor(s: Pick<Data, "scenario" | "live">): DriveRaw {
+  if (s.scenario !== "live") return presets[s.scenario];
+  const ms = s.live.reactionMs;
+  return { ...presets.clear, reaction: { trials: ms === undefined ? [] : [ms] } };
 }
+
+/** Drives the record and answers point to; what the specialist starts from. */
+export const recommendedFor = (answers: Data["answers"]) => recommendDrives({ cataract: true, sleepMed: true, answers });
 
 export const blankDetermination: Determination = {
   outcome: null,
@@ -192,15 +141,16 @@ export const blankDetermination: Determination = {
   signedAt: null,
 };
 
-export function determinationFor(outcome: Outcome): Determination {
+/** A fresh decision for an outcome. With scores, the limits and note are drafted from the drives themselves. */
+export function determinationFor(outcome: Outcome, result?: ScoreResult): Determination {
   const c = outcomeCopy[outcome];
   return {
     outcome,
     reasoning: "",
-    conditions: [...c.conditions],
+    conditions: outcome === "conditions" && result ? [...result.conditions] : [...c.conditions],
     plan: [...c.plan],
     retestMonths: c.retestMonths,
-    note: c.note,
+    note: result ? draftNote(outcome, result) : c.note,
     discussed: false,
     signature: null,
     signedAt: null,
@@ -214,18 +164,16 @@ function stageState(stage: JumpStage, keep: Pick<Data, "scenario" | "speed" | "t
   if (stage === "healthkey") return healthkey;
   const checkin: Data = { ...healthkey, hkConnected: true, answers: { ...defaultAnswers }, phase: "ready", patientStep: "home" };
   if (stage === "checkin") return checkin;
-  const tests: Data = { ...checkin, location: "lakeview", simulator: "sim1", phase: "tablet-tests", tabletStep: "handoff" };
-  if (stage === "tests") return tests;
-  const drive: Data = { ...tests, phase: "pre-drive", tabletStep: "done", preDriveFeeling: "I feel fine" };
+  const assign: Data = { ...checkin, location: "lakeview", simulator: "sim1", phase: "record-review" };
+  if (stage === "assign") return assign;
+  const assigned = sortDrives(recommendedFor(defaultAnswers).map((r) => r.id));
+  const drive: Data = { ...assign, phase: "pre-drive", assigned, preDriveFeeling: "I feel fine" };
   if (stage === "drive") return drive;
   const review: Data = { ...drive, phase: "review", postFeel: "Comfortable", selfRating: 4, determination: { ...blankDetermination } };
   if (stage === "review") return review;
-  const det = determinationFor(score(rawFor(drive)).suggested);
-  return {
-    ...review,
-    phase: "released",
-    determination: { ...det, discussed: true, signature: "demo", signedAt: Date.now() },
-  };
+  const result = score(resultsFor(drive), assigned);
+  const det = determinationFor(result.suggested, result);
+  return { ...review, phase: "released", determination: { ...det, discussed: true, signature: "demo", signedAt: Date.now() } };
 }
 
 export const useDemo = create<Data & Actions>()(
@@ -236,14 +184,14 @@ export const useDemo = create<Data & Actions>()(
       setLive: (p) => set({ live: { ...get().live, ...p } }),
       go: (phase, extra) => set({ phase, ...extra }),
       startReview: () => set({ phase: "review", determination: { ...blankDetermination } }),
-      reset: () => set({ ...initial, scenario: get().scenario, speed: get().speed }),
+      reset: () => set({ ...initial, scenario: get().scenario, speed: get().speed, visit: get().visit + 1 }),
       jump: (stage) => {
         const s = get();
-        set(stageState(stage, { scenario: s.scenario, speed: s.speed, textScale: s.textScale }));
+        set({ ...stageState(stage, { scenario: s.scenario, speed: s.speed, textScale: s.textScale }), visit: s.visit + 1 });
       },
     }),
     {
-      name: "driverscore-demo-v2",
+      name: "driverscore-demo-v3",
       version: 1,
       storage: createJSONStorage(() => localStorage),
       partialize: (s) => {
@@ -255,7 +203,7 @@ export const useDemo = create<Data & Actions>()(
 );
 
 // Keep every open tab (patient, specialist, simulator) on the same visit.
-const channel = typeof BroadcastChannel !== "undefined" ? new BroadcastChannel("driverscore-demo") : null;
+const channel = typeof BroadcastChannel !== "undefined" ? new BroadcastChannel("driverscore-demo-v3") : null;
 let applyingRemote = false;
 if (channel) {
   useDemo.subscribe((s, prev) => {
@@ -274,13 +222,16 @@ if (channel) {
   };
 }
 
-export const useRaw = () => {
+export const useResults = () => {
   const scenario = useDemo((s) => s.scenario);
   const live = useDemo((s) => s.live);
-  const handsOn = useDemo((s) => s.handsOn);
-  const drivesCompleted = useDemo((s) => s.drivesCompleted);
-  const collisionSeen = useDemo((s) => s.collisionSeen);
-  return rawFor({ scenario, live, handsOn, drivesCompleted, collisionSeen });
+  return resultsFor({ scenario, live });
 };
 
-export const useScore = () => score(useRaw());
+export const useScore = () => {
+  const raw = useResults();
+  const assigned = useDemo((s) => s.assigned);
+  const drivesCompleted = useDemo((s) => s.drivesCompleted);
+  const hardStopSeen = useDemo((s) => s.hardStopSeen);
+  return score(raw, assigned, drivesCompleted ?? undefined, hardStopSeen);
+};

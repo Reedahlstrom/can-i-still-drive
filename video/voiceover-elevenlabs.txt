@@ -1,0 +1,44 @@
+DriverScore demo: voiceover for ElevenLabs
+One clip per scene. File names in brackets. Break tags work in Multilingual v2, Turbo and Flash.
+
+[01-open]
+Every year, millions of older drivers, and the families who love them, face the same question. <break time="1.0s" /> Can I still drive?
+
+[02-problem]
+In the United States, fifty-two million licensed drivers are sixty-five or older. <break time="0.6s" /> Yet only a few hundred certified driver rehabilitation specialists serve the whole country. <break time="0.6s" /> And the evidence that matters is scattered: in the doctor's notes, at the pharmacy, in last year's eye exam.
+
+[03-solution]
+DriverScore brings it together, as part of a doctor's visit: the patient's own health record, and simulator drives chosen for her. <break time="0.5s" /> A driving specialist reviews everything, and signs the result.
+
+[04-home]
+It starts at home. <break time="0.5s" /> Margaret confirms her details, then connects her health record through HealthKey. She chooses exactly what to share, and only her specialist and her doctor can see it. <break time="0.4s" /> Four short questions about her driving, and she's ready.
+
+[05-checkin]
+At the hospital, she taps "I'm here," and picks the simulator that's ready for her. <break time="0.5s" /> On the specialist's iPad, Margaret appears, with her record and her answers already waiting. What matters most comes first: <break time="0.3s" /> a new sleep medicine, a cataract, a close call.
+
+[06-assign]
+From her record, the specialist picks the drives that matter for Margaret. <break time="0.5s" /> Brake reaction, because of the new sleep medicine. A night drive with glare, because of the cataract. Left turns, where most close calls happen. <break time="0.5s" /> Margaret sees which drives were chosen, and why.
+
+[07-drive]
+Then Margaret drives only what was assigned: six short simulator drives. <break time="0.5s" /> As each one finishes, its score appears on the specialist's iPad.
+
+[08-record]
+When the drives end, every result is saved to Margaret's health record, with what was measured, and the rule behind each score.
+
+[09-review]
+Every score comes with its reasoning: what was measured, the rule, and the result. <break time="0.5s" /> DriverScore shows each step of its logic and suggests an outcome. <break time="0.3s" /> But the specialist decides. She chooses, writes a note in plain words, and signs.
+
+[10-clear]
+Margaret's result arrives on her phone. <break time="0.4s" /> She's clear to drive. <break time="0.5s" /> Each drive is explained in a plain sentence, and her next steps say exactly who does what, and when she'll be tested again.
+
+[11-stop]
+When the news is harder, it's shared in person first. <break time="0.6s" /> Then the app leads with how she'll get around: a ride with her daughter, a taxi by phone, a senior shuttle, Uber, or a self-driving car.
+
+[12-outcomes]
+There are four outcomes. <break time="0.5s" /> Clear. <break time="0.4s" /> Drive with conditions. <break time="0.4s" /> Pause and reassess. <break time="0.4s" /> And time to stop. <break time="0.6s" /> Each one comes with a plan.
+
+[13-trust]
+The specialist always decides. <break time="0.4s" /> Margaret controls her data. <break time="0.4s" /> Her result goes to her and her doctor. The app never sends it to the DMV, and her records are never sold.
+
+[14-close]
+DriverScore. <break time="0.8s" /> A clear answer, and a plan, for every driver.

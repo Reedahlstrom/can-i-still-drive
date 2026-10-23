@@ -2,28 +2,36 @@ import { Check } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { useEffect, useState } from "react";
 import { patient } from "../data/demo";
+import { DRIVES, driveById } from "../data/drives";
 import { SimCanvas } from "../sim/SimCanvas";
-import { DRIVE, LEFT_TURNS, SCENARIOS, driveEvents, driveSeconds, scenarioAt, useDriveClock } from "../sim/timeline";
-import { useDemo, useRaw, useScore } from "../state/store";
+import { SCORE_AT, driveEvents, driveLength, driveSeconds, hardStopAt, segmentAt, useDriveClock } from "../sim/timeline";
+import { useDemo, useResults, useScore } from "../state/store";
 import { HealthKeyLogo } from "../ui/Brand";
 import { Button } from "../ui/primitives";
 import { Card, Pane } from "./Shell";
 
 export function DrivePrep() {
   const feeling = useDemo((s) => s.preDriveFeeling);
+  const assigned = useDemo((s) => s.assigned);
   const go = useDemo((s) => s.go);
   const concern = feeling && feeling !== "I feel fine";
+  const minutes = DRIVES.filter((d) => assigned.includes(d.id)).reduce((a, d) => a + d.minutes, 0);
   return (
     <Pane
-      title="Simulator drive"
-      sub="Six scored drives on Simulator 1."
+      title="Simulator drives"
+      sub={`${assigned.length} drives assigned, about ${minutes} minutes on Simulator 1.`}
       actions={
-        <Button size="md" variant="signal" disabled={!feeling} onClick={() => go("driving", { simStart: Date.now(), drivesCompleted: null, collisionSeen: false, live: { ...useDemo.getState().live, reactionMs: undefined } })}>
+        <Button
+          size="md"
+          variant="signal"
+          disabled={!feeling || !assigned.length}
+          onClick={() => go("driving", { simStart: Date.now(), drivesCompleted: null, hardStopSeen: false, live: { ...useDemo.getState().live, reactionMs: undefined } })}
+        >
           Start simulator
         </Button>
       }
     >
-      <div className="grid grid-cols-[1fr_1fr] gap-5">
+      <div className="grid grid-cols-[1fr_1fr] items-start gap-5">
         <Card title="Before the drive">
           <div className="px-5 pt-2 pb-5">
             {feeling ? (
@@ -40,15 +48,23 @@ export function DrivePrep() {
             )}
           </div>
         </Card>
-        <Card title="Scored drives">
+        <Card
+          title="Assigned drives"
+          aside={
+            <button onClick={() => go("record-review")} className="text-[14px] font-semibold text-graphite hover:text-asphalt">
+              Change
+            </button>
+          }
+        >
           <ol className="divide-y divide-line pb-1">
-            {SCENARIOS.map((s, i) => (
-              <li key={s.id} className="flex items-center justify-between px-5 py-3">
-                <span className="flex items-center gap-3 text-[16px]">
-                  <span className="w-5 font-display font-bold text-graphite">{i + 1}</span>
-                  {s.label}
+            {assigned.map((id, i) => (
+              <li key={id} className="flex items-center gap-3 px-5 py-3">
+                <span className="w-5 font-display font-bold text-graphite">{i + 1}</span>
+                <span className="min-w-0 flex-1">
+                  <span className="block text-[16px] font-semibold">{driveById[id].name}</span>
+                  <span className="block text-[13px] text-graphite">{driveById[id].measures}</span>
                 </span>
-                <span className="text-[14px] text-graphite">{s.max} points</span>
+                <span className="text-[13px] text-graphite">{driveById[id].minutes} min</span>
               </li>
             ))}
           </ol>
@@ -62,36 +78,44 @@ export function LiveDrive() {
   const simStart = useDemo((s) => s.simStart);
   const speed = useDemo((s) => s.speed);
   const scenario = useDemo((s) => s.scenario);
+  const assigned = useDemo((s) => s.assigned);
   const liveReaction = useDemo((s) => s.live.reactionMs);
   const setLive = useDemo((s) => s.setLive);
   const go = useDemo((s) => s.go);
-  const raw = useRaw();
-  const t = useDriveClock(simStart, speed, 10);
-  const idx = scenarioAt(t);
+  const raw = useResults();
+  const result = useScore();
+  const length = driveLength(assigned.length);
+  const t = useDriveClock(simStart, speed, length, 10);
+  const seg = segmentAt(t, assigned);
+  const isLive = scenario === "live";
+  const events = driveEvents(assigned, result.drives, raw).filter((e) => e.at <= t);
   const [confirmStop, setConfirmStop] = useState(false);
+
   useEffect(() => {
     if (!confirmStop) return;
     const id = setTimeout(() => setConfirmStop(false), 3000);
     return () => clearTimeout(id);
   }, [confirmStop]);
-  const stopDrive = () => {
-    if (!confirmStop) return setConfirmStop(true);
-    go("post-drive", { drivesCompleted: idx, collisionSeen: raw.collision && t >= LEFT_TURNS[1] + 0.7 });
-  };
-  const isLive = scenario === "live";
-  const events = driveEvents(raw, isLive ? liveReaction : undefined).filter((e) => e.at <= t);
 
   useEffect(() => {
     const s = useDemo.getState();
-    if (s.phase === "driving" && driveSeconds(s.simStart, s.speed) >= DRIVE) go("post-drive");
+    if (s.phase === "driving" && driveSeconds(s.simStart, s.speed, driveLength(s.assigned.length)) >= driveLength(s.assigned.length)) go("post-drive");
   }, [t, go]);
+
+  const stopDrive = () => {
+    if (!confirmStop) return setConfirmStop(true);
+    // A drive whose score has already appeared counts as done; so does a hard stop already seen.
+    const finished = seg.local >= SCORE_AT;
+    const hs = hardStopAt(seg.id, raw);
+    go("post-drive", { drivesCompleted: finished ? seg.index + 1 : seg.index, hardStopSeen: !finished && hs !== null && seg.local >= hs });
+  };
 
   const mins = Math.floor(t / 60);
   const secs = Math.floor(t % 60);
 
   return (
     <Pane
-      title="Simulator drive"
+      title="Simulator drives"
       sub={
         <span className="flex items-center gap-2">
           <span className="relative flex size-2.5">
@@ -110,26 +134,33 @@ export function LiveDrive() {
       }
     >
       <div className="overflow-hidden rounded-2xl bg-asphalt" style={{ aspectRatio: "16 / 7.6" }}>
-        <SimCanvas simStart={simStart} speed={speed} raw={raw} liveReaction={{ live: isLive, measured: isLive ? liveReaction ?? null : null }} onBrake={(ms) => setLive({ reactionMs: ms })} />
+        <SimCanvas
+          simStart={simStart}
+          speed={speed}
+          assigned={assigned}
+          raw={raw}
+          liveReaction={{ live: isLive, measured: isLive ? liveReaction ?? null : null }}
+          onBrake={(ms) => setLive({ reactionMs: ms })}
+        />
       </div>
       <div className="mt-4 grid grid-cols-[1fr_1fr] gap-5">
         <Card title="Drives">
           <ol className="divide-y divide-line pb-1">
-            {SCENARIOS.map((s, i) => {
-              const done = i < idx || t >= DRIVE;
-              const now = i === idx && t < DRIVE;
+            {assigned.map((id, i) => {
+              const done = i < seg.index || t >= length;
+              const now = i === seg.index && t < length;
               return (
-                <li key={s.id} className={`flex items-center justify-between px-5 py-[7px] ${now ? "bg-signal-soft" : ""}`}>
+                <li key={id} className={`flex items-center justify-between px-5 py-[7px] ${now ? "bg-signal-soft" : ""}`}>
                   <span className={`flex items-center gap-3 text-[16px] ${now ? "font-semibold" : done ? "" : "text-graphite"}`}>
                     <span className={`flex size-6 items-center justify-center rounded-full text-[12px] font-bold ${done ? "bg-asphalt text-white" : now ? "bg-signal" : "bg-mist"}`}>{done ? <Check size={14} strokeWidth={3} /> : i + 1}</span>
-                    {s.label}
+                    {driveById[id].name}
                   </span>
                 </li>
               );
             })}
           </ol>
         </Card>
-        <Card title="Events">
+        <Card title="Results as they come in">
           <div className="no-scrollbar flex max-h-[210px] flex-col-reverse overflow-y-auto pb-1">
             <AnimatePresence initial={false}>
               {[...events].reverse().map((e) => (
@@ -139,7 +170,7 @@ export function LiveDrive() {
                 </motion.div>
               ))}
             </AnimatePresence>
-            {events.length === 0 && <div className="px-5 py-3 text-[15px] text-graphite">Results appear here as each drive finishes.</div>}
+            {events.length === 0 && <div className="px-5 py-3 text-[15px] text-graphite">Each drive's score appears here when it finishes.</div>}
           </div>
         </Card>
       </div>
@@ -152,25 +183,28 @@ export function DriveDone() {
   const postFeel = useDemo((s) => s.postFeel);
   const selfRating = useDemo((s) => s.selfRating);
   const result = useScore();
-  const sim = result.domains.find((d) => d.id === "simulator")!;
   return (
-    <Pane title={sim.items.every((i) => i.done) ? "Drive complete" : "Drive stopped"} sub="Results came across from Simulator 1." actions={<Button size="md" onClick={() => go("uploading")}>Continue to review</Button>}>
-      <div className="grid grid-cols-[1.3fr_1fr] gap-5">
-        <Card title="Simulator" aside={<span className="font-display text-[15px] font-bold tnum">{sim.points} <span className="font-normal text-graphite">of {sim.max}</span></span>}>
+    <Pane
+      title={result.incomplete ? "Drive stopped" : "Drives complete"}
+      sub="Each score comes with what was measured and why."
+      actions={<Button size="md" onClick={() => go("uploading")}>Continue to review</Button>}
+    >
+      <div className="grid grid-cols-[1.45fr_1fr] items-start gap-5">
+        <Card title="Scores" aside={<span className="font-display text-[15px] font-bold tnum">DriverScore {result.total}</span>}>
           <div className="divide-y divide-line pb-1">
-            {sim.items.map((it) => (
-              <div key={it.id} className="flex items-center justify-between px-5 py-3">
-                <div>
-                  <div className="text-[16px] font-semibold">{it.label}</div>
-                  <div className="text-[13px] text-graphite">{it.raw}</div>
+            {result.drives.map((d) => (
+              <div key={d.id} className="px-5 py-3">
+                <div className="flex items-baseline justify-between gap-3">
+                  <span className="text-[16px] font-semibold">{d.name}</span>
+                  {d.done ? (
+                    <span className={`font-display text-[16px] font-bold tnum ${d.hardStop ? "text-alert" : ""}`}>
+                      {d.points} <span className="font-normal text-graphite">of 10</span>
+                    </span>
+                  ) : (
+                    <span className="text-[15px] text-graphite">Not completed</span>
+                  )}
                 </div>
-                {it.done ? (
-                  <span className="font-display text-[16px] font-bold tnum">
-                    {it.points} <span className="font-normal text-graphite">of {it.max}</span>
-                  </span>
-                ) : (
-                  <span className="text-[15px] text-graphite">Not completed</span>
-                )}
+                {d.done && <div className="mt-0.5 text-[14px] leading-snug">{d.reason}</div>}
               </div>
             ))}
           </div>
@@ -194,9 +228,9 @@ export function DriveDone() {
 
 const uploads = [
   { label: "Intake answers", detail: "4 answers, patient reported" },
-  { label: "Tablet tests", detail: "4 results and the clock drawing" },
-  { label: "Hands-on checks", detail: "10 results, entered by you" },
-  { label: "Simulator", detail: "Drive results and the session file" },
+  { label: "Assigned drives", detail: "Which drives you chose, and why" },
+  { label: "Drive results", detail: "Scores, measurements and the rule behind each" },
+  { label: "Simulator session", detail: "The full session file" },
 ];
 
 export function Upload() {

@@ -5,10 +5,8 @@ import { atLeast, useDemo, type Phase } from "../state/store";
 import { Avatar, DriverScoreMark } from "../ui/Brand";
 
 const steps: { label: string; from: Phase; done: Phase }[] = [
-  { label: "Record review", from: "record-review", done: "tablet-tests" },
-  { label: "Tablet tests", from: "tablet-tests", done: "hands-on" },
-  { label: "Hands-on checks", from: "hands-on", done: "pre-drive" },
-  { label: "Simulator drive", from: "pre-drive", done: "post-drive" },
+  { label: "Review and assign", from: "record-review", done: "pre-drive" },
+  { label: "Simulator drives", from: "pre-drive", done: "post-drive" },
   { label: "Review and sign", from: "post-drive", done: "released" },
 ];
 
@@ -16,11 +14,9 @@ export function Rail() {
   const phase = useDemo((s) => s.phase);
   const go = useDemo((s) => s.go);
   const reopen: Partial<Record<string, () => void>> = {
-    "Record review": () => go("record-review"),
-    "Tablet tests": () => go("tablet-tests", { tabletStep: "handoff" }),
-    "Hands-on checks": () => go("hands-on"),
+    "Review and assign": () => go("record-review"),
     // Evidence from the last drive stays until a new drive actually starts.
-    "Simulator drive": () => go("pre-drive", { simStart: null }),
+    "Simulator drives": () => go("pre-drive", { simStart: null }),
   };
   const inVisit = atLeast(phase, "record-review");
   const simBusy = atLeast(phase, "checked-in") && phase !== "released";

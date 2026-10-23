@@ -73,6 +73,7 @@ function useView(): View {
 export function PatientApp() {
   const view = useView();
   const phase = useDemo((s) => s.phase);
+  const visit = useDemo((s) => s.visit);
   const patientStep = useDemo((s) => s.patientStep);
   const textScale = useDemo((s) => s.textScale);
   const set = useDemo((s) => s.set);
@@ -138,7 +139,7 @@ export function PatientApp() {
         <main className="relative min-h-0 flex-1" style={{ zoom: textScale, ...(view.tabs ? ({ "--safe-bottom": "0px" } as React.CSSProperties) : {}) }}>
           <AnimatePresence mode="wait" initial={false}>
             <motion.div
-              key={view.key}
+              key={`${view.key}-${visit}`}
               className="absolute inset-0"
               initial={{ opacity: 0, x: 26 }}
               animate={{ opacity: 1, x: 0 }}

@@ -4,7 +4,7 @@ import { useEffect, useState, type CSSProperties, type ReactNode } from "react";
 import { scenarioLabels, type ScenarioKey } from "../data/scenarios";
 import { PatientApp } from "../patient/PatientApp";
 import { SpecialistApp } from "../specialist/SpecialistApp";
-import { driveSeconds } from "../sim/timeline";
+import { driveLength, driveSeconds } from "../sim/timeline";
 import { blankDetermination, jumpLabels, useDemo, type JumpStage } from "../state/store";
 import { DriverScoreWordmark } from "../ui/Brand";
 import { Segmented } from "../ui/primitives";
@@ -114,14 +114,14 @@ function Presenter({ onClose }: { onClose: () => void }) {
   const open = (hash: string) => window.open(`${location.pathname}#/${hash}`, `driverscore-${hash}`);
   const pickScenario = (k: ScenarioKey) => {
     const s = useDemo.getState();
-    set({ scenario: k, handsOn: {} });
+    set({ scenario: k });
     if (s.phase === "released") jump("results");
     else if (s.phase === "review") set({ determination: { ...blankDetermination } });
   };
   const changeSpeed = (v: 1 | 2) => {
     const s = useDemo.getState();
     if (s.phase === "driving" && s.simStart) {
-      const elapsed = driveSeconds(s.simStart, s.speed);
+      const elapsed = driveSeconds(s.simStart, s.speed, driveLength(s.assigned.length));
       set({ speed: v, simStart: Date.now() - (elapsed * 1000) / v });
     } else set({ speed: v });
   };
@@ -147,7 +147,7 @@ function Presenter({ onClose }: { onClose: () => void }) {
           </button>
         ))}
       </div>
-      <p className="mt-2 text-[13px] leading-snug text-graphite">Live scores the tablet tests and brake reaction as they're taken.</p>
+      <p className="mt-2 text-[13px] leading-snug text-graphite">Live measures your own brake tap: tap the road or press space at the red light.</p>
       <h3 className="mt-4 mb-2 text-[14px] font-semibold text-graphite">Jump to</h3>
       <div className="grid grid-cols-2 gap-1.5">
         {(Object.keys(jumpLabels) as JumpStage[]).map((k) => (

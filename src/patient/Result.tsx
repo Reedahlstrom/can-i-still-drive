@@ -6,7 +6,7 @@ import { outcomeCopy, planDetail } from "../data/scenarios";
 import { addMonths, longDate, shortDate, today } from "../lib/dates";
 import { useDemo, useScore, type Ride } from "../state/store";
 import { Avatar } from "../ui/Brand";
-import { DomainBars } from "../ui/DomainBars";
+import { DriveResults } from "../ui/DriveResults";
 import { Button, Group, SectionLabel, Segmented } from "../ui/primitives";
 import { CarTop, Gauge } from "../ui/Road";
 import { Screen } from "./Screen";
@@ -25,14 +25,14 @@ function ScoreBlock() {
   return (
     <div>
       <div className="flex flex-col items-center rounded-3xl bg-paper px-5 pt-6 pb-6">
-        <Gauge value={result.total} max={result.possible} size={276} delay={0.5} />
+        <Gauge value={result.total} size={276} delay={0.5} />
         <div className="mt-1 text-center">
-          <div className="font-display text-[20px] font-bold">DriverScore{result.incomplete ? ` ${result.total} of ${result.possible}` : ""}</div>
+          <div className="font-display text-[20px] font-bold">DriverScore</div>
           <div className="mt-0.5 text-[17px] text-graphite">One part of {specialist.first}'s decision</div>
         </div>
       </div>
-      <div className="mt-6 px-1">
-        <DomainBars domains={result.domains} patient delay={1.1} />
+      <div className="mt-7 px-1">
+        <DriveResults drives={result.drives} delay={1.1} />
       </div>
     </div>
   );

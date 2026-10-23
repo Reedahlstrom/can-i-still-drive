@@ -1,66 +1,83 @@
 import { useEffect, useState } from "react";
-import type { Raw } from "../lib/score";
+import { driveById, sortDrives, type DriveId } from "../data/drives";
+import type { DriveRaw, DriveScore } from "../lib/score";
 
-export const SCENARIOS = [
-  { id: "reaction", label: "Reaction time", max: 3 },
-  { id: "right", label: "Right turns", max: 6 },
-  { id: "left", label: "Left turns", max: 9 },
-  { id: "lane", label: "Lane changes", max: 12 },
-  { id: "fod", label: "Object detection", max: 5 },
-  { id: "choice", label: "Drive of choice", max: 5 },
-] as const;
+// The simulator world is one long road. Each drive owns an 8-second stretch of it (at 1x);
+// an assigned set of drives plays those stretches back to back.
+export const SEG = 8;
 
-export const SEG = 8; // seconds per scenario at 1x
-export const DRIVE = SEG * SCENARIOS.length;
-
-// Moments inside the drive, in drive seconds.
+// Moments in world time (seconds from the start of the road).
 export const LIGHT_RED_AT = 2.2;
 export const STOP_AT = 3.4;
 export const GO_AT = 5.0;
 export const RIGHT_TURNS = [9.2, 11.7, 14.2];
 export const LEFT_TURNS = [17.2, 19.7, 22.2];
 export const LANE_CHANGES = [25.0, 27.6, 30.2];
-export const FOD_TARGETS = [33.0, 34.4, 35.8, 37.2, 38.6];
+export const FOD_TARGETS = [32.7, 33.55, 34.4, 35.25, 36.1, 36.95, 37.8, 38.65];
+export const NIGHT_HAZARDS = [41.2, 42.7, 44.2, 45.7, 47.0];
 export const TURN_LEN = 1.4;
+export const CRASH_AT = LEFT_TURNS[1] + 0.7;
+export const CITY_STOP_AT = 44.2;
+/** Seconds into a drive when its score is published; stopping after this counts the drive as done. */
+export const SCORE_AT = SEG - 0.2;
 
-export function driveSeconds(simStart: number | null, speed: number, now = Date.now()) {
+export const driveLength = (count: number) => count * SEG;
+
+export function driveSeconds(simStart: number | null, speed: number, length: number, now = Date.now()) {
   if (!simStart) return 0;
-  return Math.max(0, Math.min(DRIVE, ((now - simStart) / 1000) * speed));
+  return Math.max(0, Math.min(length, ((now - simStart) / 1000) * speed));
 }
 
-export function scenarioAt(t: number) {
-  return Math.min(SCENARIOS.length - 1, Math.floor(t / SEG));
+export type Segment = { index: number; count: number; id: DriveId; local: number; world: number; night: boolean };
+
+export function segmentAt(t: number, assigned: DriveId[]): Segment {
+  const ids = sortDrives(assigned);
+  const count = Math.max(1, ids.length);
+  const index = Math.min(count - 1, Math.floor(t / SEG));
+  const id = ids[index] ?? "reaction";
+  const local = Math.min(SEG, t - index * SEG);
+  const def = driveById[id];
+  return { index, count, id, local, world: def.world + local, night: !!def.night };
 }
 
-export function useDriveClock(simStart: number | null, speed: number, hz = 8) {
-  const [t, setT] = useState(() => driveSeconds(simStart, speed));
+export function useDriveClock(simStart: number | null, speed: number, length: number, hz = 8) {
+  const [t, setT] = useState(() => driveSeconds(simStart, speed, length));
   useEffect(() => {
-    setT(driveSeconds(simStart, speed));
+    setT(driveSeconds(simStart, speed, length));
     if (!simStart) return;
-    const id = setInterval(() => setT(driveSeconds(simStart, speed)), 1000 / hz);
+    const id = setInterval(() => setT(driveSeconds(simStart, speed, length)), 1000 / hz);
     return () => clearInterval(id);
-  }, [simStart, speed, hz]);
+  }, [simStart, speed, length, hz]);
   return t;
 }
 
-export type DriveEvent = { at: number; scenario: number; text: string; points?: string; alert?: boolean };
+export type DriveEvent = { at: number; text: string; points?: string; alert?: boolean };
 
-export function driveEvents(raw: Raw, liveReactionMs?: number): DriveEvent[] {
-  const rt = liveReactionMs ?? raw.reactionMs;
-  const ev: DriveEvent[] = [{ at: STOP_AT, scenario: 0, text: "Brake reaction", points: rt === undefined ? "No response" : `${(rt / 1000).toFixed(2)} s` }];
-  RIGHT_TURNS.forEach((at, i) => ev.push({ at: at + TURN_LEN, scenario: 1, text: `Right turn ${i + 1}`, points: `${raw.rightTurns[i]} of 2` }));
-  LEFT_TURNS.forEach((at, i) => {
-    if (raw.collision && i === 1) ev.push({ at: at + 0.7, scenario: 2, text: "Collision during left turn 2", alert: true });
-    ev.push({ at: at + TURN_LEN, scenario: 2, text: `Left turn ${i + 1}`, points: `${raw.leftTurns[i]} of 3` });
+/** Seconds into a drive when its hard-stop event happens, if these results contain one. */
+export function hardStopAt(id: DriveId, raw: DriveRaw): number | null {
+  if (id === "reaction" && raw.reaction.ranRed) return LIGHT_RED_AT + 1.4 - driveById.reaction.world;
+  if (id === "left" && raw.left.collision) return CRASH_AT - driveById.left.world;
+  if (id === "city" && raw.city.ranStop) return CITY_STOP_AT - driveById.city.world;
+  return null;
+}
+
+const hardStopText: Partial<Record<DriveId, string>> = { reaction: "Ran the red light", left: "Collision during left turn 2", city: "Rolled through a stop sign" };
+
+/** What the specialist sees come in as each assigned drive finishes. */
+export function driveEvents(assigned: DriveId[], scores: DriveScore[], raw: DriveRaw): DriveEvent[] {
+  const ids = sortDrives(assigned);
+  const ev: DriveEvent[] = [];
+  ids.forEach((id, i) => {
+    const start = i * SEG;
+    const hs = hardStopAt(id, raw);
+    if (hs !== null) ev.push({ at: start + hs, text: hardStopText[id] ?? "Hard stop", alert: true });
+    const s = scores.find((x) => x.id === id);
+    if (s && s.done) ev.push({ at: start + SCORE_AT, text: s.name, points: `${s.points} of 10` });
   });
-  LANE_CHANGES.forEach((at, i) => ev.push({ at: at + 1.6, scenario: 3, text: `Lane change ${i + 1}`, points: `${raw.laneChanges[i]} of 4` }));
-  ev.push({ at: 39.6, scenario: 4, text: "Objects spotted", points: `${raw.fod} of 5` });
-  ev.push({ at: 47.4, scenario: 5, text: "City drive", points: `${raw.driveChoice} of 5` });
   return ev.sort((a, b) => a.at - b.at);
 }
 
-/** Which FOD targets the driver caught, given how many of 5 were spotted. */
+/** Which of the eight on-screen objects the driver caught, given how many were spotted. */
 export function fodCaught(spotted: number) {
-  const order = [0, 2, 4, 1, 3];
-  return new Set(order.slice(0, spotted));
+  return new Set([0, 3, 5, 1, 6, 2, 7, 4].slice(0, spotted));
 }

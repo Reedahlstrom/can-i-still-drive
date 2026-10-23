@@ -3,8 +3,9 @@ import { motion } from "motion/react";
 import { useEffect, useState } from "react";
 import { locations, simulators, specialist, visit } from "../data/demo";
 import { longDate, today } from "../lib/dates";
-import { DRIVE, driveSeconds, useDriveClock } from "../sim/timeline";
-import { atLeast, useDemo, type Phase } from "../state/store";
+import { driveById } from "../data/drives";
+import { driveLength, driveSeconds, useDriveClock } from "../sim/timeline";
+import { atLeast, recommendedFor, useDemo, type Phase } from "../state/store";
 import { Avatar } from "../ui/Brand";
 import { Button, CheckDot, ChoiceList, Group, SectionLabel } from "../ui/primitives";
 import { RoadLoader, SteeringWheel } from "../ui/Road";
@@ -135,10 +136,8 @@ export function Connecting() {
 }
 
 const visitSteps: { label: string; from: Phase; done: Phase }[] = [
-  { label: "Record review", from: "checked-in", done: "tablet-tests" },
-  { label: "Tablet tests", from: "tablet-tests", done: "hands-on" },
-  { label: "Hands-on checks", from: "hands-on", done: "pre-drive" },
-  { label: "Simulator drive", from: "pre-drive", done: "post-drive" },
+  { label: "Record review", from: "checked-in", done: "pre-drive" },
+  { label: "Simulator drives", from: "pre-drive", done: "post-drive" },
   { label: "Go over results", from: "post-drive", done: "released" },
 ];
 
@@ -147,11 +146,7 @@ function statusFor(phase: Phase, unwell: boolean) {
     case "checked-in":
       return { title: "You're checked in", lead: `${specialist.first} will meet you in Room 204.` };
     case "record-review":
-      return { title: `${specialist.first} is reviewing your record`, lead: "Your health record and answers are open on the iPad." };
-    case "tablet-tests":
-      return { title: "Tablet tests", lead: `${specialist.first} will hand you the iPad. Each test shows you how it works first. One of them is timed.` };
-    case "hands-on":
-      return { title: "Hands-on checks", lead: `${specialist.first} will check your vision, memory and movement.` };
+      return { title: `${specialist.first} is reviewing your record`, lead: "She'll choose the simulator drives for you from your record and answers." };
     case "pre-drive":
       return { title: "Simulator drive next", lead: unwell ? `${specialist.first} will check on you before you start.` : `${specialist.first} will help you adjust the seat and mirrors.` };
     default:
@@ -207,8 +202,38 @@ export function VisitStatus() {
 
 export function PreDrive() {
   const set = useDemo((s) => s.set);
+  const assigned = useDemo((s) => s.assigned);
+  const answers = useDemo((s) => s.answers);
+  const [seen, setSeen] = useState(false);
   const [v, setV] = useState<string | undefined>();
   const options = ["I feel fine", "A little dizzy or queasy", "Tired"];
+  const why = Object.fromEntries(recommendedFor(answers).map((r) => [r.id, r.patientReason]));
+
+  if (!seen)
+    return (
+      <Screen
+        speech={`${specialist.first} chose ${assigned.length} drives for you. ${assigned.map((id) => `${driveById[id].name}. ${why[id] ?? driveById[id].measures}.`).join(" ")}`}
+        footer={<Button onClick={() => setSeen(true)}>Continue</Button>}
+      >
+        <Meta className="mb-3">Your drives today</Meta>
+        <Title>
+          {specialist.first} chose {assigned.length} drives for you
+        </Title>
+        <Lead>About {assigned.reduce((a, id) => a + driveById[id].minutes, 0)} minutes on the simulator.</Lead>
+        <Group className="mt-6">
+          {assigned.map((id, i) => (
+            <div key={id} className="flex gap-4 px-5 py-4">
+              <span className="mt-0.5 flex size-7 shrink-0 items-center justify-center rounded-full bg-mist font-display text-[15px] font-bold">{i + 1}</span>
+              <div>
+                <div className="text-[19px] font-semibold leading-snug">{driveById[id].name}</div>
+                <div className="mt-0.5 text-[17px] leading-snug text-graphite">{why[id] ?? driveById[id].measures}</div>
+              </div>
+            </div>
+          ))}
+        </Group>
+      </Screen>
+    );
+
   return (
     <Screen speech={`Before you drive. How do you feel right now? Your answer doesn't count toward your result. If you're not feeling well, ${specialist.first} will wait. ${options.join(". ")}.`} footer={<Button disabled={!v} onClick={() => set({ preDriveFeeling: v })}>Continue</Button>}>
       <Meta className="mb-3">Before you drive</Meta>
@@ -224,11 +249,13 @@ export function PreDrive() {
 export function Driving() {
   const simStart = useDemo((s) => s.simStart);
   const speed = useDemo((s) => s.speed);
+  const assigned = useDemo((s) => s.assigned);
   const go = useDemo((s) => s.go);
-  const t = useDriveClock(simStart, speed, 2);
+  const t = useDriveClock(simStart, speed, driveLength(assigned.length), 2);
   useEffect(() => {
     const s = useDemo.getState();
-    if (s.phase === "driving" && driveSeconds(s.simStart, s.speed) >= DRIVE) go("post-drive");
+    const length = driveLength(s.assigned.length);
+    if (s.phase === "driving" && driveSeconds(s.simStart, s.speed, length) >= length) go("post-drive");
   }, [t, go]);
   return (
     <Screen tone="dark" speech={`You're driving. ${specialist.first} is right beside you. Say stop any time.`}>
@@ -242,7 +269,6 @@ export function Driving() {
     </Screen>
   );
 }
-
 export function PostDrive() {
   const set = useDemo((s) => s.set);
   const postFeel = useDemo((s) => s.postFeel);

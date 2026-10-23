@@ -1,19 +1,23 @@
 import { useEffect, useRef } from "react";
-import type { Raw } from "../lib/score";
+import { driveById, type DriveId } from "../data/drives";
+import type { DriveRaw } from "../lib/score";
 import {
-  DRIVE,
+  CITY_STOP_AT,
+  CRASH_AT,
   FOD_TARGETS,
   GO_AT,
   LANE_CHANGES,
   LEFT_TURNS,
   LIGHT_RED_AT,
+  NIGHT_HAZARDS,
   RIGHT_TURNS,
-  SCENARIOS,
+  SEG,
   STOP_AT,
   TURN_LEN,
+  driveLength,
   driveSeconds,
   fodCaught,
-  scenarioAt,
+  segmentAt,
 } from "./timeline";
 
 // Pseudo-3D road renderer. Position is a pure function of drive time, so every
@@ -27,7 +31,9 @@ const DRAW = 200;
 const BASE_V = 5600;
 const DT = 1 / 60;
 
-const C = {
+const WORLD = 48; // seconds of road at 1x
+
+const DAY = {
   skyTop: "#9FBBD0",
   skyLow: "#E4ECEF",
   hillFar: "#B9C9BE",
@@ -43,6 +49,26 @@ const C = {
   dash: "#1C2229",
 };
 
+const NIGHT: typeof DAY = {
+  skyTop: "#070C14",
+  skyLow: "#1A2533",
+  hillFar: "#111923",
+  hillNear: "#151E27",
+  grassA: "#18221C",
+  grassB: "#16201A",
+  rumbleA: "#3A4148",
+  rumbleB: "#2D333A",
+  roadA: "#24292F",
+  roadB: "#22272D",
+  line: "#C9CDCA",
+  yellow: "#B88A10",
+  dash: "#1C2229",
+};
+
+// The palette in use for the frame being drawn.
+let C = DAY;
+let isNight = false;
+
 type Sprite = { kind: "tree" | "building" | "lamp" | "stop" | "light" | "crosswalk"; offset: number; seed: number };
 type Seg = { index: number; curve: number; sprites: Sprite[]; crosswalk?: boolean; stopLine?: boolean };
 
@@ -51,7 +77,16 @@ function smooth(a: number, b: number, t: number) {
   return x * x * (3 - 2 * x);
 }
 
-function speedAt(t: number) {
+/** Speed through a turn at a stop sign: full stop, a pause, then the turn at a crawl. */
+function stopAndTurn(t: number, at: number, hold: number) {
+  if (t < at - 1.0 || t > at + TURN_LEN + 0.7) return 1;
+  if (t < at - 0.3) return 1 - smooth(at - 1.0, at - 0.3, t);
+  if (t < at - 0.3 + hold) return 0;
+  if (t < at + TURN_LEN) return 0.36 * smooth(at - 0.3 + hold, at + 0.2 + hold, t);
+  return 0.36 + 0.64 * smooth(at + TURN_LEN, at + TURN_LEN + 0.7, t);
+}
+
+function speedAt(t: number, ranStop = false) {
   let v = 1;
   // Reaction: brake for the red light, then pull away.
   const brakeStart = LIGHT_RED_AT + 0.6;
@@ -60,22 +95,35 @@ function speedAt(t: number) {
     else if (t < GO_AT) v = 0;
     else v = smooth(GO_AT, GO_AT + 1.6, t);
   }
-  for (const at of RIGHT_TURNS) if (t > at - 0.6 && t < at + TURN_LEN + 0.4) v = Math.min(v, 0.62 + 0.38 * Math.abs((t - (at + TURN_LEN / 2)) / (TURN_LEN / 2 + 0.6)));
-  for (const at of LEFT_TURNS) if (t > at - 1.0 && t < at + TURN_LEN + 0.4) v = Math.min(v, 0.5 + 0.5 * Math.abs((t - (at + TURN_LEN / 2)) / (TURN_LEN / 2 + 1.0)));
+  for (const at of RIGHT_TURNS) v = Math.min(v, stopAndTurn(t, at, 0.35));
+  // Left turns wait for the cross traffic to clear.
+  for (const at of LEFT_TURNS) v = Math.min(v, stopAndTurn(t, at, 0.6));
   if (t >= 24 && t < 32) v *= 1 + 0.25 * smooth(24, 25, t) * (1 - smooth(31.4, 32, t));
-  if (t >= 40) v *= 0.88;
+  if (t >= 40) {
+    v *= 0.88;
+    // The stop sign in town: a full stop, or a roll through it.
+    const at = CITY_STOP_AT;
+    if (t > at - 0.9 && t < at + 1.1) {
+      if (ranStop) v *= 1 - 0.4 * Math.sin(Math.PI * smooth(at - 0.9, at + 1.1, t));
+      else if (t < at - 0.2) v *= 1 - smooth(at - 0.9, at - 0.2, t);
+      else if (t < at + 0.3) v = 0;
+      else v *= smooth(at + 0.3, at + 1.1, t);
+    }
+  }
   return v * BASE_V;
 }
 
 type World = { z: Float32Array; segs: Seg[]; cum: Float32Array; zAt: (t: number) => number; segAtTime: (t: number) => number };
 
-let worldCache: World | null = null;
+const worldCache: Partial<Record<"stops" | "rolls", World>> = {};
 
-function buildWorld(): World {
-  if (worldCache) return worldCache;
-  const steps = Math.ceil(DRIVE / DT) + 2;
+function buildWorld(ranStop: boolean): World {
+  const cacheKey = ranStop ? "rolls" : "stops";
+  const cached = worldCache[cacheKey];
+  if (cached) return cached;
+  const steps = Math.ceil(WORLD / DT) + 2;
   const z = new Float32Array(steps);
-  for (let i = 1; i < steps; i++) z[i] = z[i - 1] + speedAt(i * DT) * DT;
+  for (let i = 1; i < steps; i++) z[i] = z[i - 1] + speedAt(i * DT, ranStop) * DT;
   const zAt = (t: number) => {
     const f = Math.max(0, Math.min(steps - 1.001, t / DT));
     const i = Math.floor(f);
@@ -95,9 +143,13 @@ function buildWorld(): World {
     }
   };
   // Gentle bends between tasks, sharp ones for turns.
+  const curveSegs = (a: number, len: number, amount: number) => {
+    for (let i = a; i <= a + len && i < n; i++) segs[i].curve += amount * Math.sin(((i - a) / len) * Math.PI);
+  };
   curveBetween(0.2, 1.8, 1.2);
-  RIGHT_TURNS.forEach((at) => curveBetween(at, at + TURN_LEN, 7));
-  LEFT_TURNS.forEach((at) => curveBetween(at, at + TURN_LEN, -7));
+  // Turns bend away just past the crosswalk the car stopped at.
+  RIGHT_TURNS.forEach((at) => curveSegs(segAtTime(at) + 10, 16, 8));
+  LEFT_TURNS.forEach((at) => curveSegs(segAtTime(at) + 10, 16, -8));
   curveBetween(26.2, 27.4, -1.4);
   curveBetween(32.5, 35.5, 1.6);
   curveBetween(36, 39.5, -1.8);
@@ -109,25 +161,28 @@ function buildWorld(): World {
     for (let i = seg; i < seg + 3 && i < n; i++) segs[i].crosswalk = true;
     if (stop && seg - 1 >= 0) segs[seg - 1].stopLine = true;
   };
-  const lightSeg = segAtTime(STOP_AT) + 9;
-  mark(lightSeg - 2, true);
-  segs[lightSeg].sprites.push({ kind: "light", offset: 1.32, seed: 0 });
-  RIGHT_TURNS.forEach((at) => mark(segAtTime(at) - 2));
-  LEFT_TURNS.forEach((at) => {
-    const s = segAtTime(at) - 3;
-    mark(s, true);
-    segs[s - 1].sprites.push({ kind: "stop", offset: 1.28, seed: 0 });
+  // Stop line just ahead of where the car halts; the signal hangs on the far side of the intersection.
+  const stopSeg = segAtTime(STOP_AT);
+  mark(stopSeg + 7, true);
+  mark(stopSeg + 25);
+  segs[stopSeg + 28].sprites.push({ kind: "light", offset: 1.32, seed: 0 });
+  // Every turn and the town stop sign: the car halts just short of the stop line, with the sign in view.
+  [...RIGHT_TURNS, ...LEFT_TURNS, CITY_STOP_AT].forEach((at) => {
+    const s = segAtTime(at) + 6;
+    mark(s + 1, true);
+    segs[s].sprites.push({ kind: "stop", offset: 1.28, seed: 0 });
   });
 
   // Roadside: trees and lamps outside town, buildings in town.
   const townStart = segAtTime(40);
+  const signSegs = new Set([...RIGHT_TURNS, ...LEFT_TURNS, CITY_STOP_AT].map((at) => segAtTime(at) + 6));
   let rnd = 7;
   const rand = () => {
     rnd = (rnd * 16807) % 2147483647;
     return rnd / 2147483647;
   };
   for (let i = 6; i < n; i++) {
-    if (segs[i].crosswalk) continue;
+    if (segs[i].crosswalk || signSegs.has(i) || (i > stopSeg + 6 && i < stopSeg + 28)) continue;
     if (i >= townStart) {
       if (i % 3 === 0) segs[i].sprites.push({ kind: "building", offset: -(1.9 + rand() * 0.5), seed: rand() });
       if (i % 3 === 1) segs[i].sprites.push({ kind: "building", offset: 1.9 + rand() * 0.5, seed: rand() });
@@ -141,8 +196,9 @@ function buildWorld(): World {
 
   const cum = new Float32Array(n);
   for (let i = 1; i < n; i++) cum[i] = cum[i - 1] + segs[i].curve;
-  worldCache = { z, segs, cum, zAt, segAtTime };
-  return worldCache;
+  const world = { z, segs, cum, zAt, segAtTime };
+  worldCache[cacheKey] = world;
+  return world;
 }
 
 function laneX(t: number) {
@@ -169,8 +225,6 @@ function trafficAt(t: number, w: World): Traffic[] {
     const z0 = w.zAt(t0) + 2600;
     out.push({ lane: fromLane, z: z0 + 0.55 * BASE_V * (t - t0), color: colors[i] });
   });
-  // A car ahead in town.
-  if (t > 40 && t < 48) out.push({ lane: 0.5, z: w.zAt(40) + 2400 + 0.86 * BASE_V * (t - 40), color: colors[3] });
   return out;
 }
 
@@ -229,9 +283,9 @@ function drawSprite(ctx: CanvasRenderingContext2D, s: Sprite, x: number, y: numb
   switch (s.kind) {
     case "tree": {
       const h = unit * (0.9 + s.seed * 0.6);
-      ctx.fillStyle = "#6F6253";
+      ctx.fillStyle = isNight ? "#221E1A" : "#6F6253";
       ctx.fillRect(x - h * 0.04, y - h * 0.38, h * 0.08, h * 0.38);
-      ctx.fillStyle = s.seed > 0.5 ? "#7F9B83" : "#6C8A73";
+      ctx.fillStyle = isNight ? (s.seed > 0.5 ? "#1E2A22" : "#1A251E") : s.seed > 0.5 ? "#7F9B83" : "#6C8A73";
       ctx.beginPath();
       ctx.ellipse(x, y - h * 0.66, h * 0.32, h * 0.38, 0, 0, Math.PI * 2);
       ctx.fill();
@@ -240,15 +294,19 @@ function drawSprite(ctx: CanvasRenderingContext2D, s: Sprite, x: number, y: numb
     case "building": {
       const w = unit * (0.9 + s.seed * 0.5);
       const h = unit * (1.2 + s.seed * 1.4);
-      const tones = ["#CBC6BD", "#B9BFC3", "#D9D4CA", "#A9B2B7"];
+      const tones = isNight ? ["#20262E", "#1C2229", "#252B33", "#1A1F25"] : ["#CBC6BD", "#B9BFC3", "#D9D4CA", "#A9B2B7"];
       ctx.fillStyle = tones[Math.floor(s.seed * 4) % 4];
       ctx.fillRect(x - w / 2, y - h, w, h);
       if (w > 14) {
-        ctx.fillStyle = "rgba(38,48,58,0.55)";
         const cols = 3;
         const rows = Math.max(2, Math.floor(h / (w / 2.4)));
         for (let r = 0; r < rows; r++)
-          for (let c = 0; c < cols; c++) ctx.fillRect(x - w / 2 + w * (0.12 + c * 0.28), y - h + h * (0.08 + r * (0.84 / rows)), w * 0.16, (h * 0.84) / rows - h * 0.05);
+          for (let c = 0; c < cols; c++) {
+            // At night some windows are lit.
+            const lit = isNight && ((r * 7 + c * 3 + Math.floor(s.seed * 10)) % 3 === 0);
+            ctx.fillStyle = isNight ? (lit ? "rgba(244,195,90,0.85)" : "rgba(10,14,18,0.6)") : "rgba(38,48,58,0.55)";
+            ctx.fillRect(x - w / 2 + w * (0.12 + c * 0.28), y - h + h * (0.08 + r * (0.84 / rows)), w * 0.16, (h * 0.84) / rows - h * 0.05);
+          }
       }
       break;
     }
@@ -262,6 +320,17 @@ function drawSprite(ctx: CanvasRenderingContext2D, s: Sprite, x: number, y: numb
       ctx.lineTo(x, y - h);
       ctx.lineTo(x - unit * 0.22, y - h);
       ctx.stroke();
+      if (isNight) {
+        const r = Math.max(1.5, unit * 0.16);
+        const g = ctx.createRadialGradient(x - unit * 0.22, y - h, 0, x - unit * 0.22, y - h, r);
+        g.addColorStop(0, "rgba(255,226,170,0.9)");
+        g.addColorStop(0.25, "rgba(255,214,140,0.35)");
+        g.addColorStop(1, "rgba(255,214,140,0)");
+        ctx.fillStyle = g;
+        ctx.beginPath();
+        ctx.arc(x - unit * 0.22, y - h, r, 0, Math.PI * 2);
+        ctx.fill();
+      }
       break;
     }
     case "stop": {
@@ -354,17 +423,30 @@ function drawWheel(ctx: CanvasRenderingContext2D, cx: number, cy: number, r: num
   ctx.restore();
 }
 
-export function render(ctx: CanvasRenderingContext2D, W: number, H: number, t: number, raw: Raw, reaction: { measured: number | null; live: boolean }) {
-  const w = buildWorld();
+export function render(
+  ctx: CanvasRenderingContext2D,
+  W: number,
+  H: number,
+  driveT: number,
+  assigned: DriveId[],
+  raw: DriveRaw,
+  reaction: { measured: number | null; live: boolean },
+) {
+  const w = buildWorld(!!raw.city.ranStop);
+  const drive = segmentAt(driveT, assigned);
+  const t = drive.world;
+  C = drive.night ? NIGHT : DAY;
+  isNight = drive.night;
   const position = w.zAt(t);
   const baseIndex = Math.floor(position / SEG_LEN);
   const basePct = (position % SEG_LEN) / SEG_LEN;
-  const playerX = laneX(t);
+  // At night the car wanders in its lane by the drift that was measured.
+  const playerX = laneX(t) + (drive.night ? (raw.night.drift / 12) * Math.sin((t - 40) * 1.6) : 0);
   const horizon = H * 0.5;
 
   // Collision shake.
-  const crashAt = LEFT_TURNS[1] + 0.7;
-  const crashing = raw.collision && t > crashAt - 0.1 && t < crashAt + 0.6;
+  const crashAt = CRASH_AT;
+  const crashing = drive.id === "left" && raw.left.collision && t > crashAt - 0.1 && t < crashAt + 0.6;
   ctx.save();
   if (crashing) ctx.translate(Math.sin(t * 90) * W * 0.004, Math.cos(t * 70) * H * 0.004);
 
@@ -448,7 +530,8 @@ export function render(ctx: CanvasRenderingContext2D, W: number, H: number, t: n
   }
 
   // Sprites and traffic, far to near.
-  const traffic = trafficAt(t, w);
+  // At night the road ahead stays clear so the roadside hazards are the task.
+  const traffic = drive.night ? [] : trafficAt(t, w);
   for (let n = proj.length - 1; n >= 0; n--) {
     const { p1, seg, clip } = proj[n];
     if (p1.z <= CAM_DEPTH * 120) continue;
@@ -470,7 +553,7 @@ export function render(ctx: CanvasRenderingContext2D, W: number, H: number, t: n
 
   // Cross traffic at left turns.
   LEFT_TURNS.forEach((at, i) => {
-    const near = raw.collision && i === 1;
+    const near = raw.left.collision && i === 1;
     let cx: number;
     const size = W * (near ? 0.2 : 0.07);
     const y = horizon + H * (near ? 0.2 : 0.06);
@@ -507,17 +590,21 @@ export function render(ctx: CanvasRenderingContext2D, W: number, H: number, t: n
   });
 
   // Object detection targets.
-  const caught = fodCaught(raw.fod);
+  const caught = fodCaught(raw.fod.spotted);
+  // Eight objects at the edges of the view, alternating sides.
   const spots = [
     [0.11, 0.36],
     [0.87, 0.31],
-    [0.08, 0.52],
-    [0.92, 0.47],
-    [0.2, 0.27],
+    [0.08, 0.55],
+    [0.93, 0.5],
+    [0.19, 0.24],
+    [0.81, 0.2],
+    [0.05, 0.4],
+    [0.95, 0.66],
   ];
   FOD_TARGETS.forEach((at, i) => {
-    if (t < at || t > at + 1.1) return;
-    const k = (t - at) / 1.1;
+    if (t < at || t > at + 1.0) return;
+    const k = (t - at) / 1.0;
     const [fx, fy] = spots[i];
     const r = W * 0.018;
     ctx.globalAlpha = Math.min(1, (1 - k) * 3);
@@ -538,6 +625,61 @@ export function render(ctx: CanvasRenderingContext2D, W: number, H: number, t: n
     ctx.globalAlpha = 1;
   });
 
+  // Night drive: headlight pool, oncoming glare and people at the roadside.
+  if (drive.night) {
+    const vg = ctx.createRadialGradient(W / 2, H * 0.95, H * 0.1, W / 2, H * 0.75, H * 0.95);
+    vg.addColorStop(0, "rgba(255,236,200,0.10)");
+    vg.addColorStop(1, "rgba(0,0,0,0.38)");
+    ctx.fillStyle = vg;
+    ctx.fillRect(0, 0, W, H);
+    [41.7, 44.6, 46.5].forEach((at) => {
+      if (t < at - 0.9 || t > at + 0.5) return;
+      const k = Math.min(1, (t - (at - 0.9)) / 1.2);
+      const x = W * (0.45 - 0.32 * k * k);
+      const y = horizon + H * (0.012 + 0.14 * k * k);
+      const r = W * (0.003 + 0.022 * k * k);
+      const glow = ctx.createRadialGradient(x, y, 0, x, y, r * 16);
+      glow.addColorStop(0, `rgba(255,255,240,${0.95 * Math.min(1, k * 1.6)})`);
+      glow.addColorStop(0.18, `rgba(255,248,220,${0.5 * k})`);
+      glow.addColorStop(1, "rgba(255,248,220,0)");
+      ctx.fillStyle = glow;
+      ctx.fillRect(0, 0, W, H);
+      ctx.fillStyle = "#FFFDF2";
+      ctx.beginPath();
+      ctx.arc(x - r * 1.7, y, r, 0, Math.PI * 2);
+      ctx.arc(x + r * 1.7, y, r, 0, Math.PI * 2);
+      ctx.fill();
+    });
+    const seen = new Set([0, 2, 4, 1, 3].slice(0, raw.night.spotted));
+    const hx = [0.64, 0.34, 0.7, 0.3, 0.66];
+    NIGHT_HAZARDS.forEach((at, i) => {
+      if (t < at || t > at + 1.1) return;
+      const k = (t - at) / 1.1;
+      const x = W * hx[i];
+      const y = horizon + H * (0.07 + 0.1 * k);
+      const sz = H * (0.05 + 0.07 * k);
+      ctx.globalAlpha = Math.min(1, (1 - k) * 3);
+      ctx.fillStyle = "#59626D";
+      ctx.beginPath();
+      ctx.arc(x, y - sz * 0.95, sz * 0.13, 0, Math.PI * 2);
+      ctx.fill();
+      rr(ctx, x - sz * 0.12, y - sz * 0.8, sz * 0.24, sz * 0.55, sz * 0.06);
+      ctx.fill();
+      ctx.fillRect(x - sz * 0.1, y - sz * 0.28, sz * 0.07, sz * 0.28);
+      ctx.fillRect(x + sz * 0.03, y - sz * 0.28, sz * 0.07, sz * 0.28);
+      ctx.fillStyle = "#F4B400";
+      ctx.fillRect(x - sz * 0.12, y - sz * 0.6, sz * 0.24, sz * 0.045);
+      if (seen.has(i) && k > 0.35) {
+        ctx.strokeStyle = "#ffffff";
+        ctx.lineWidth = Math.max(1.5, sz * 0.03);
+        ctx.beginPath();
+        ctx.arc(x, y - sz * 0.5, sz * (0.75 + (k - 0.35) * 0.8), 0, Math.PI * 2);
+        ctx.stroke();
+      }
+      ctx.globalAlpha = 1;
+    });
+  }
+
   // Dashboard and wheel.
   const dashTop = H * 0.84;
   ctx.fillStyle = "#1F262D";
@@ -553,7 +695,7 @@ export function render(ctx: CanvasRenderingContext2D, W: number, H: number, t: n
   const steer = Math.max(-1.6, Math.min(1.6, seg.curve * 0.2 + laneSteer));
   drawWheel(ctx, W / 2, H * 1.02, H * 0.26, steer);
 
-  const mph = Math.round((speedAt(t) / BASE_V) * 38);
+  const mph = Math.round((speedAt(t, !!raw.city.ranStop) / BASE_V) * 38);
   ctx.fillStyle = "#ffffff";
   ctx.textAlign = "left";
   ctx.textBaseline = "alphabetic";
@@ -565,13 +707,13 @@ export function render(ctx: CanvasRenderingContext2D, W: number, H: number, t: n
   ctx.fillText("mph", W * 0.05 + mphW + H * 0.012, H * 0.955);
 
   // Brake prompt for a live reaction test.
-  if (reaction.live && t > LIGHT_RED_AT && t < LIGHT_RED_AT + 1.6 && reaction.measured === null) {
+  if (drive.id === "reaction" && reaction.live && t > LIGHT_RED_AT && t < LIGHT_RED_AT + 1.6 && reaction.measured === null) {
     ctx.font = `700 ${H * 0.034}px "Atkinson Hyperlegible Next Variable", sans-serif`;
     ctx.textAlign = "center";
     ctx.fillStyle = "#ffffff";
     ctx.fillText("Tap to brake", W / 2, H * 0.8);
   }
-  if (reaction.measured !== null && t > LIGHT_RED_AT && t < GO_AT + 1) {
+  if (drive.id === "reaction" && reaction.measured !== null && t > LIGHT_RED_AT && t < GO_AT + 1) {
     ctx.font = `800 ${H * 0.05}px "Overpass Variable", sans-serif`;
     ctx.textAlign = "center";
     ctx.fillStyle = "#ffffff";
@@ -584,9 +726,17 @@ export function render(ctx: CanvasRenderingContext2D, W: number, H: number, t: n
     ctx.fillRect(0, 0, W, H);
   }
 
-  // Task label.
-  const i = scenarioAt(t);
-  const label = `${SCENARIOS[i].label}  ${i + 1} of ${SCENARIOS.length}`;
+  // Fade between drives.
+  const fadeIn = drive.index > 0 ? 1 - Math.min(1, drive.local / 0.4) : 0;
+  const fadeOut = drive.index < drive.count - 1 ? Math.max(0, (drive.local - (SEG - 0.3)) / 0.3) : 0;
+  const fade = Math.max(fadeIn, fadeOut);
+  if (fade > 0) {
+    ctx.fillStyle = `rgba(12,15,19,${fade})`;
+    ctx.fillRect(0, 0, W, H);
+  }
+
+  // Drive label.
+  const label = `Drive ${drive.index + 1} of ${drive.count}: ${driveById[drive.id].name}`;
   ctx.font = `700 ${H * 0.032}px "Atkinson Hyperlegible Next Variable", sans-serif`;
   ctx.textAlign = "left";
   const tw = ctx.measureText(label).width;
@@ -600,6 +750,7 @@ export function render(ctx: CanvasRenderingContext2D, W: number, H: number, t: n
 export function SimCanvas({
   simStart,
   speed,
+  assigned,
   raw,
   liveReaction,
   onBrake,
@@ -607,14 +758,15 @@ export function SimCanvas({
 }: {
   simStart: number | null;
   speed: number;
-  raw: Raw;
+  assigned: DriveId[];
+  raw: DriveRaw;
   liveReaction: { live: boolean; measured: number | null };
   onBrake?: (ms: number) => void;
   className?: string;
 }) {
   const ref = useRef<HTMLCanvasElement>(null);
-  const state = useRef({ simStart, speed, raw, liveReaction });
-  state.current = { simStart, speed, raw, liveReaction };
+  const state = useRef({ simStart, speed, assigned, raw, liveReaction });
+  state.current = { simStart, speed, assigned, raw, liveReaction };
 
   useEffect(() => {
     const canvas = ref.current!;
@@ -630,8 +782,8 @@ export function SimCanvas({
     ro.observe(canvas);
     const loop = () => {
       const s = state.current;
-      const t = driveSeconds(s.simStart, s.speed);
-      render(ctx, canvas.width, canvas.height, t, s.raw, s.liveReaction);
+      const t = driveSeconds(s.simStart, s.speed, driveLength(s.assigned.length));
+      render(ctx, canvas.width, canvas.height, t, s.assigned, s.raw, s.liveReaction);
       raf = requestAnimationFrame(loop);
     };
     raf = requestAnimationFrame(loop);
@@ -653,9 +805,9 @@ export function SimCanvas({
   function brake() {
     const s = state.current;
     if (!onBrake || !s.liveReaction.live || s.liveReaction.measured !== null) return;
-    const t = driveSeconds(s.simStart, s.speed);
-    if (t < LIGHT_RED_AT || t > LIGHT_RED_AT + 2.5) return;
-    onBrake(Math.round(((t - LIGHT_RED_AT) / s.speed) * 1000));
+    const seg = segmentAt(driveSeconds(s.simStart, s.speed, driveLength(s.assigned.length)), s.assigned);
+    if (seg.id !== "reaction" || seg.world < LIGHT_RED_AT || seg.world > LIGHT_RED_AT + 2.5) return;
+    onBrake(Math.round(((seg.world - LIGHT_RED_AT) / s.speed) * 1000));
   }
 
   return <canvas ref={ref} onPointerDown={brake} className={`block h-full w-full touch-none ${className}`} aria-label="Simulator view" role="img" />;

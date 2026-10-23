@@ -9,7 +9,7 @@
  },
  {
   "id": "solution",
-  "text": "DriverScore brings it together, as part of a doctor's visit. A driving simulator, a few short clinical tests, and the patient's own health record, in one place. A driving specialist reviews everything, and signs the result."
+  "text": "DriverScore brings it together, as part of a doctor's visit: the patient's own health record, and simulator drives chosen for her. A driving specialist reviews everything, and signs the result."
  },
  {
   "id": "home",
@@ -20,24 +20,24 @@
   "text": "At the hospital, she taps I'm here, and picks the simulator that's ready for her. On the specialist's iPad, Margaret appears, with her record and her answers already waiting. What matters most comes first: a new sleep medicine, a cataract, a close call."
  },
  {
-  "id": "tests",
-  "text": "Margaret takes a few short tests on the iPad: connecting circles, drawing a clock, matching road signs, naming colors. Then the specialist scores vision, memory, and movement, one tap at a time."
+  "id": "assign",
+  "text": "From her record, the specialist picks the drives that matter for Margaret. Brake reaction, because of the new sleep medicine. A night drive with glare, because of the cataract. Left turns, where most close calls happen. Margaret sees which drives were chosen, and why."
  },
  {
   "id": "drive",
-  "text": "Then, the drive. Six scored scenarios: reaction time, right turns, left turns, lane changes, spotting objects, and a drive through town. Every result streams live to the specialist."
+  "text": "Then Margaret drives only what was assigned: six short simulator drives. As each one finishes, its score appears on the specialist's iPad."
  },
  {
   "id": "record",
-  "text": "When the drive ends, every result is saved to Margaret's health record, each with its source and time."
+  "text": "When the drives end, every result is saved to Margaret's health record, with what was measured, and the rule behind each score."
  },
  {
   "id": "review",
-  "text": "Now the specialist reviews it all. DriverScore suggests an outcome, but the specialist decides. She chooses, writes a note in plain words, and signs."
+  "text": "Every score comes with its reasoning: what was measured, the rule, and the result. DriverScore shows each step of its logic and suggests an outcome. But the specialist decides. She chooses, writes a note in plain words, and signs."
  },
  {
   "id": "clear",
-  "text": "Margaret's result arrives on her phone. She's clear to drive. Her next steps say exactly who does what, and when she'll be tested again."
+  "text": "Margaret's result arrives on her phone. She's clear to drive. Each drive is explained in a plain sentence, and her next steps say exactly who does what, and when she'll be tested again."
  },
  {
   "id": "stop",
