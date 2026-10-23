@@ -50,6 +50,16 @@ DriverScore v0 follows the CISD scoring sheet: vision 20, cognition 17 rescaled 
 
 All people, places and records in the demo are fictional.
 
+## Demo video
+
+`video/` is a Remotion project that renders a narrated walkthrough from real captures of the app (see `video/README.md`). With the dev server running on port 5181:
+
+```bash
+cd video && node capture.mjs && npx remotion render src/index.ts DriverScoreDemo out/DriverScore-demo-draft-1.mp4 --codec h264 --crf 16
+```
+
+The presenter's click path is in `DEMO.md`.
+
 ## Deploy
 
 Hosted on Cloudflare Workers (static assets). `npm run deploy` builds and publishes with Wrangler.
