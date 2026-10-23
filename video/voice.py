@@ -1,9 +1,11 @@
 """Turn a full voiceover recording into one clip per scene, with measured word timings.
 
     python3 voice.py --model ggml-base.en.bin take1.mp3 [take2.mp3 ...] [--use outcomes=2]
+    python3 voice.py --model ggml-base.en.bin --only assign assign-take.mp3
 
 Each take is the whole script read in order, one paragraph per scene (script.json). By default every
-scene comes from take 1; --use picks another take for a scene (1-based). Writes public/vo/<scene>.wav,
+scene comes from take 1; --use picks another take for a scene (1-based). With --only, the take holds
+just that scene's line and only that scene is replaced. Writes public/vo/<scene>.wav,
 public/vo/durations.json, and public/vo/cues.json (when each word starts, so on-screen moments land on
 the spoken words). Needs whisper-cli (whisper.cpp) and numpy; uses Remotion's bundled ffmpeg.
 """
@@ -24,8 +26,9 @@ OUT = os.path.join(HERE, "public", "vo")
 FFDIR = os.path.join(HERE, "node_modules", "@remotion", "compositor-darwin-arm64")
 SCRIPT = json.load(open(os.path.join(HERE, "script.json")))
 
-# Even gain for every clip, then a soft ceiling so the loudest peaks stay below full scale.
-GAIN = 1.26
+# Every clip is levelled to the same speech loudness (takes generated separately can differ),
+# then a soft ceiling keeps the loudest peaks below full scale.
+TARGET_DB = -18.0
 KNEE, CEILING = 0.82, 0.94
 
 
@@ -38,10 +41,12 @@ def norm(w):
     return re.sub(r"[^a-z0-9]", "", w.lower().replace("’", "'"))
 
 
-def script_words():
+def script_words(only=None):
     """Every word of the script: (scene id, character index in its line, normalised word)."""
     out = []
     for sc in SCRIPT:
+        if only and sc["id"] != only:
+            continue
         for m in re.finditer(r"\S+", sc["text"]):
             off = 0
             for part in m.group(0).split("-"):
@@ -91,13 +96,16 @@ def main():
     ap.add_argument("takes", nargs="+")
     ap.add_argument("--model", required=True, help="whisper.cpp model, e.g. ggml-base.en.bin")
     ap.add_argument("--use", action="append", default=[], help="scene=take, e.g. outcomes=2")
+    ap.add_argument("--only", help="the takes hold just this scene's line; replace only that scene")
     a = ap.parse_args()
+    if a.only and a.only not in {sc["id"] for sc in SCRIPT}:
+        ap.error(f"no scene called {a.only}")
     choice = {sc["id"]: 0 for sc in SCRIPT}
     for u in a.use:
         sid, n = u.split("=")
         choice[sid] = int(n) - 1
 
-    sw = script_words()
+    sw = script_words(a.only)
     tmp = tempfile.mkdtemp()
     takes = []
     for i, path in enumerate(a.takes):
@@ -112,7 +120,12 @@ def main():
         takes.append((t, e, x, sr))
 
     durs, cues = {}, {}
+    if a.only:
+        durs = json.load(open(os.path.join(OUT, "durations.json")))
+        cues = json.load(open(os.path.join(OUT, "cues.json")))
     for sc in SCRIPT:
+        if a.only and sc["id"] != a.only:
+            continue
         t, e, x, sr = takes[choice[sc["id"]]]
         idx = [i for i, w in enumerate(sw) if w[0] == sc["id"]]
         first, last = idx[0], idx[-1]
@@ -152,7 +165,9 @@ def main():
         start = max(0.0, speech0 - 0.1)
         end = speech1 + 0.22
 
-        clip = x[int(start * sr) : int(end * sr)].copy() * GAIN
+        clip = x[int(start * sr) : int(end * sr)].copy()
+        speech = clip[np.abs(clip) > 0.01]
+        clip *= 10 ** ((TARGET_DB - 20 * np.log10(np.sqrt(np.mean(speech**2)))) / 20)
         over = np.abs(clip) > KNEE
         clip[over] = np.sign(clip[over]) * (KNEE + (CEILING - KNEE) * np.tanh((np.abs(clip[over]) - KNEE) / (CEILING - KNEE)))
         f = int(0.012 * sr)
@@ -165,7 +180,7 @@ def main():
             w.writeframes((clip * 32767).astype(np.int16).tobytes())
         durs[sc["id"]] = round(len(clip) / sr, 3)
         cues[sc["id"]] = [[sw[i][1], round(t[i] - start, 3)] for i in idx]
-        print(f"{sc['id']:9s} take {choice[sc['id']] + 1}  {durs[sc['id']]:5.2f}s")
+        print(f"{sc['id']:9s} take {choice[sc['id']] + 1}  {durs[sc['id']]:5.2f}s  speech {speech0:.2f}-{speech1:.2f} of {len(x) / sr:.2f}s")
     json.dump(durs, open(os.path.join(OUT, "durations.json"), "w"), indent=1)
     json.dump(cues, open(os.path.join(OUT, "cues.json"), "w"))
     print(f"voice total {sum(durs.values()):.1f}s")

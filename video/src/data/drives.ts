@@ -18,7 +18,7 @@ export const DRIVES: DriveDef[] = [
   { id: "left", name: "Left turns across traffic", measures: "Judging gaps in oncoming traffic", minutes: 6, world: 16 },
   { id: "lane", name: "Lane changes", measures: "Mirror checks, signals and gaps at speed", minutes: 6, world: 24 },
   { id: "fod", name: "Spotting objects", measures: "Side vision and attention while driving", minutes: 5, world: 32 },
-  { id: "night", name: "Night drive with glare", measures: "Seeing hazards in low light and oncoming glare", minutes: 7, world: 40, night: true },
+  { id: "night", name: "Night drive", measures: "Seeing hazards in low light", minutes: 7, world: 40, night: true },
   { id: "city", name: "City drive", measures: "Signs, signals and speed in town", minutes: 8, world: 40 },
 ];
 

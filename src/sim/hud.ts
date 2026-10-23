@@ -5,7 +5,7 @@ import type { View } from "./engine/engine";
 import { carLength } from "./engine/vehicles";
 import { FOD_TARGETS, LEFT_CRASH, NIGHT_HAZARDS, REACTION, SEG, fodCaught, type Segment } from "./timeline";
 
-// Everything drawn over the 3D view: the drive label, speed, signals, test targets, glare and fades.
+// Everything drawn over the 3D view: the drive label, speed, signals, test targets, headlights and fades.
 
 const DISPLAY = `"Overpass Variable", "Atkinson Hyperlegible Next Variable", sans-serif`;
 const BODY = `"Atkinson Hyperlegible Next Variable", sans-serif`;

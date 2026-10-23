@@ -32,6 +32,10 @@ await phone.setViewportSize({ width: 393, height: 852 });
 await phone.goto(`${BASE}/#/capture-phone`);
 await phone.waitForFunction(() => !!window.__demo);
 const ipad = await ctx.newPage();
+for (const p of [phone, ipad]) {
+  p.on("pageerror", (e) => console.log("page error:", e.message));
+  p.on("console", (m) => m.type() === "error" && console.log("console error:", m.text().slice(0, 300)));
+}
 await ipad.setViewportSize({ width: 1180, height: 820 });
 await ipad.goto(`${BASE}/#/capture-ipad`);
 await ipad.waitForFunction(() => !!window.__demo);
@@ -139,11 +143,14 @@ await state(ipad, "drive");
 await shot(ipad, "i-drive-prep");
 // Last drive under way: five of six drives scored. simStart uses the page's clock.
 await state(ipad, "drive", { phase: "driving" });
-await ipad.evaluate((ago) => window.__demo.setState({ simStart: Date.now() - ago }), 43000);
+// Nearly frozen at 43 s: the 3D view takes a few seconds to load, and the drive must still be running.
+await ipad.evaluate((ago) => window.__demo.setState({ speed: 0.01, simStart: Date.now() - ago / 0.01 }), 43000);
 await ipad.waitForSelector('canvas[aria-label="Simulator view"]', { timeout: 8000 }).catch(async () => {
   console.log("state now", await ipad.evaluate(() => window.__demo.getState().phase));
 });
 await wait(600);
+// The simulator view loads on demand; wait until it is laid out before measuring it.
+await ipad.waitForFunction(() => document.querySelector('canvas[aria-label="Simulator view"]')?.getBoundingClientRect().width > 0, null, { timeout: 15000 });
 meta.liveCanvas = await ipad.evaluate(() => {
   const r = document.querySelector('canvas[aria-label="Simulator view"]').getBoundingClientRect();
   return { x: r.x, y: r.y, w: r.width, h: r.height };
@@ -180,7 +187,7 @@ async function sign(page) {
 await state(ipad, "review", {}, "clear");
 await shot(ipad, "i-review-blank", 2600);
 // One drive opened to its measurement, rule and result.
-const nightRow = ipad.locator("button[aria-expanded]", { hasText: "Night drive with glare" });
+const nightRow = ipad.locator("button[aria-expanded]", { hasText: "Night drive" });
 await nightRow.click();
 await shot(ipad, "i-review-row", 800);
 await nightRow.click();

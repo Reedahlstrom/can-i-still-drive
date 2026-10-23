@@ -120,10 +120,10 @@ function scoreDrive(id: DriveId, r: DriveRaw): Omit<DriveScore, "id" | "name" | 
       const points = Math.max(0, Math.round((r.night.spotted / 5) * 10) - (drift ? 1 : 0));
       return {
         points,
-        metrics: `${r.night.spotted} of 5 hazards spotted under oncoming glare. Lane drift up to ${r.night.drift.toFixed(1)} ft.`,
+        metrics: `${r.night.spotted} of 5 hazards spotted in low light. Lane drift up to ${r.night.drift.toFixed(1)} ft.`,
         rule: "Spotted out of 5, scaled to 10. Minus 1 if lane drift is over 1.5 ft.",
         reason: `${r.night.spotted} of 5 hazards spotted${drift ? ", drifted in the lane" : ""}.`,
-        patient: r.night.spotted >= 4 ? "At night you spotted hazards well, even with glare." : `At night, glare made it hard to see: you spotted ${r.night.spotted} of 5 hazards.`,
+        patient: r.night.spotted >= 4 ? "At night you spotted hazards well, even in low light." : `At night, low light made it hard to see: you spotted ${r.night.spotted} of 5 hazards.`,
       };
     }
     case "city": {

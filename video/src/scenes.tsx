@@ -473,7 +473,7 @@ const onIpad = (left: number, top: number, scale: number, x: number, y: number):
 
 const reasons = [
   { phrase: "Brake reaction", title: "Brake reaction", why: "New sleep medicine can slow reactions", row: { y: 183, h: 107 } },
-  { phrase: "A night drive with glare", title: "Night drive with glare", why: "Cataract, left eye", row: { y: 662, h: 90 } },
+  { phrase: "A night drive in low light", title: "Night drive", why: "Cataract, left eye", row: { y: 662, h: 90 } },
   { phrase: "Left turns, where", title: "Left turns across traffic", why: "Where most close calls happen", row: { y: 378, h: 88 } },
 ];
 
@@ -536,7 +536,7 @@ const CLIP_SPEC = [
   { t0: 3.0, len: 2.8 }, // left turn: an oncoming car passes, then she turns across
   { t0: 1.0, len: 2.2 }, // lane change: a glance over the shoulder, signal, move over
   { t0: 2.3, len: 2.0 }, // spotting objects at the edge of vision
-  { t0: 3.1, len: 2.4 }, // night: oncoming glare, people at the curb
+  { t0: 3.1, len: 2.4 }, // night: low light, people at the curb
   { t0: 3.0, len: 2.5 }, // city: a full stop while someone crosses
 ];
 const XF = 10;
@@ -729,7 +729,7 @@ function DriveBars({ delay }: { delay: number }) {
     { l: "Left turns across traffic", v: 9 },
     { l: "Lane changes", v: 9 },
     { l: "Spotting objects", v: 9 },
-    { l: "Night drive with glare", v: 8 },
+    { l: "Night drive", v: 8 },
     { l: "City drive", v: 10 },
   ];
   return (

@@ -18,7 +18,7 @@ Before the visit, Margaret connects her health record through HealthKey, and cho
 At the hospital, she checks in on her phone. On the clinician's iPad, what matters most comes first: a new sleep medicine, a cataract, and a close call.
 
 [06-assign]
-From her record, the clinician assigns the drives that matter. Brake reaction, for the new sleep medicine. A night drive with glare, for the cataract. Left turns, where most close calls happen. Margaret sees which drives were chosen, and why.
+From her record, the clinician assigns the drives that matter. Brake reaction, for the new sleep medicine. A night drive in low light, for the cataract. Left turns, where most close calls happen. Margaret sees which drives were chosen, and why.
 
 [07-drive]
 Then she drives only what was assigned: six short simulator drives. As each one finishes, its score appears on the clinician's iPad.

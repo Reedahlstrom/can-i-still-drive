@@ -65,7 +65,7 @@ export const outcomeCopy: Record<
   conditions: {
     label: "Drive with conditions",
     title: "You can keep driving, with a few limits.",
-    note: "Your braking, turns and city driving went well. In the night drive, glare made it harder to spot hazards, and on lane changes you missed some mirror and blind-spot checks. Keep to the limits below until your re-test.",
+    note: "Your braking, turns and city driving went well. In the night drive, low light made it harder to spot hazards, and on lane changes you missed some mirror and blind-spot checks. Keep to the limits below until your re-test.",
     conditions: ["Daylight only", "No highways", "Within 15 miles of home"],
     plan: ["Eye exam for your left eye", "Two practice drives on the simulator"],
     retestMonths: 6,
