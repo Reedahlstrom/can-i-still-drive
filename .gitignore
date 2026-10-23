@@ -1,0 +1,8 @@
+node_modules
+dist
+dev-dist
+.vercel
+.DS_Store
+*.log
+# Source documents are confidential: kept locally, never committed
+docs/source/

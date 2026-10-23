@@ -1,0 +1,86 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Atkinson Hyperlegible Next Variable", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Overpass Variable", "Atkinson Hyperlegible Next Variable", ui-sans-serif, sans-serif;
+
+  --color-paper: #ffffff;
+  --color-canvas: #f5f6f4;
+  --color-mist: #eceeec;
+  --color-line: #e1e4e2;
+  --color-line-strong: #c9cecb;
+  --color-asphalt: #1c2229;
+  --color-asphalt-2: #2a323b;
+  --color-asphalt-3: #3a434d;
+  --color-graphite: #56606b;
+  --color-fog: #8b949d;
+  --color-signal: #f4b400;
+  --color-signal-soft: #fdf3d6;
+  --color-signal-ink: #865800;
+  --color-hk: #4a6650;
+  --color-hk-deep: #2f4535;
+  --color-hk-tint: #edf2ee;
+  --color-alert: #a8432a;
+  --color-alert-tint: #f8ebe6;
+
+  --ease-road: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@layer base {
+  html,
+  body,
+  #root {
+    height: 100%;
+  }
+  body {
+    margin: 0;
+    font-family: var(--font-sans);
+    color: var(--color-asphalt);
+    background: var(--color-asphalt);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+    font-feature-settings: "kern";
+  }
+  button {
+    cursor: pointer;
+    font: inherit;
+    color: inherit;
+  }
+  :focus-visible {
+    outline: 3px solid var(--color-asphalt);
+    outline-offset: 3px;
+    border-radius: 10px;
+  }
+  .dark-surface :focus-visible {
+    outline-color: var(--color-signal);
+  }
+  input,
+  textarea {
+    font: inherit;
+  }
+  ::selection {
+    background: var(--color-signal-soft);
+  }
+}
+
+@utility tnum {
+  font-variant-numeric: tabular-nums;
+}
+
+@utility no-scrollbar {
+  scrollbar-width: none;
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+}
