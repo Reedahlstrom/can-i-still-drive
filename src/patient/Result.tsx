@@ -83,7 +83,8 @@ function ShareWithFamily() {
     <div className="mt-9">
       {!shared && (
         <p className="mb-3 rounded-2xl bg-paper px-5 py-4 text-[17px] leading-snug text-graphite">
-          {family.first} gets: "Mom's driving result, signed by {specialist.name}: {title} Next steps: {d.plan.join("; ")}. Questions? {specialist.first}'s office, {offices.dana}."
+          {family.first} gets: "Mom's driving result, signed by {specialist.name}: {title}
+          {d.conditions.length ? ` Limits: ${d.conditions.join("; ")}.` : ""} Next steps: {d.plan.join("; ")}. Questions? {specialist.first}'s office, {offices.dana}."
         </p>
       )}
       <Button
@@ -129,6 +130,13 @@ function GettingAround() {
   );
 }
 
+/** A pickup time later today: at least two hours out, on the half hour. */
+function laterTime() {
+  const t = new Date(Date.now() + 2 * 3600_000);
+  t.setMinutes(t.getMinutes() < 30 ? 30 : 60, 0, 0);
+  return t.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
+}
+
 function rideCopy(ride: NonNullable<Ride>, option: RideOption, destName: string) {
   switch (option.id) {
     case "family":
@@ -138,7 +146,7 @@ function rideCopy(ride: NonNullable<Ride>, option: RideOption, destName: string)
     case "shuttle":
       return { title: "Request sent", sub: `The shuttle office will call you to set a time. To ${destName}.` };
     default:
-      if (ride.when === "later") return { title: "Ride scheduled", sub: `Pickup at 2:00 PM. To ${destName}. You'll get a text when the car is on its way.` };
+      if (ride.when === "later") return { title: "Ride scheduled", sub: `Pickup at ${laterTime()}. To ${destName}. You'll get a text when the car is on its way.` };
       return ride.status === "requested" ? { title: "Finding your ride", sub: `To ${destName}` } : { title: "Your ride is on the way", sub: `To ${destName}` };
   }
 }
