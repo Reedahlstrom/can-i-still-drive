@@ -4,7 +4,8 @@ import { UnrealBloomPass } from "three/examples/jsm/postprocessing/UnrealBloomPa
 import type { Frame } from "./drives";
 import { mats } from "./kit";
 import { buildSet, type SetData, type SetId } from "./sets";
-import { Car, Person } from "./vehicles";
+import { textures } from "./textures";
+import { Car, Person, carMaterials } from "./vehicles";
 
 // One WebGL renderer, drawn into whichever 2D canvas asks for a frame. Sharing one context keeps
 // the app's two simulator views and the video's overlapping clips cheap.
@@ -107,10 +108,11 @@ class Engine {
   /** Set when the browser takes the 3D context away (a graphics reset, or memory running low). A lost
    * engine only draws black, so the next request for an engine gets a fresh one. */
   lost = false;
+  private onLost = () => (this.lost = true);
 
   constructor(onScreen = false) {
     this.canvas = document.createElement("canvas");
-    this.canvas.addEventListener("webglcontextlost", () => (this.lost = true));
+    this.canvas.addEventListener("webglcontextlost", this.onLost);
     this.exact = onScreen;
     // Off screen, frames are copied out after drawing, so the buffer must survive until then.
     this.renderer = new THREE.WebGLRenderer({ canvas: this.canvas, antialias: false, alpha: false, powerPreference: "high-performance", preserveDrawingBuffer: !onScreen });
@@ -258,6 +260,40 @@ class Engine {
       this.rig.add(s, s.target);
       this.beams.push(s);
     }
+  }
+
+  /** Release everything this engine put on the GPU. The shared materials, textures and shapes are
+   * released too: each holds a hook back to every renderer that drew it, which would otherwise keep
+   * this whole engine in memory. Any other engine uploads them again on its next frame. */
+  dispose() {
+    const found = new Set<{ dispose(): void }>();
+    const add = (v: unknown, depth = 0): void => {
+      if (!v || typeof v !== "object" || depth > 3) return;
+      if (v instanceof THREE.Texture || v instanceof THREE.BufferGeometry) found.add(v);
+      else if (v instanceof THREE.Material) {
+        found.add(v);
+        for (const x of Object.values(v)) if (x instanceof THREE.Texture) found.add(x);
+      } else for (const x of Object.values(v)) add(x, depth + 1);
+    };
+    this.scene.traverse((o) => {
+      add((o as THREE.Mesh).geometry);
+      add((o as THREE.Mesh).material);
+    });
+    add(mats());
+    add(carMaterials());
+    add(textures());
+    add(this.env);
+    for (const r of found) r.dispose();
+    for (const t of this.targets) {
+      t.rt.dispose();
+      t.bloom.dispose();
+    }
+    this.targets = [];
+    this.output.dispose();
+    this.sun.shadow.dispose();
+    this.renderer.dispose();
+    this.canvas.removeEventListener("webglcontextlost", this.onLost);
+    this.canvas.remove();
   }
 
   /** Build a scene and compile its shaders without drawing it. */
@@ -457,8 +493,7 @@ export type { Engine };
 
 function retire(e: Engine | null) {
   if (!e?.lost) return e;
-  e.canvas.remove();
-  e.renderer.dispose();
+  e.dispose();
   return null;
 }
 
