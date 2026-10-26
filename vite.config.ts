@@ -16,6 +16,17 @@ export default defineConfig({
       includeAssets: ["favicon.svg", "healthkey-wordmark-ink.png", "healthkey-wordmark-white.png"],
       workbox: {
         globPatterns: ["**/*.{js,css,html,svg,png,woff2}"],
+        // The page itself comes from the network first, so a refresh always shows the latest version.
+        // The saved copy is only for when there's no connection.
+        navigateFallback: null,
+        directoryIndex: null,
+        runtimeCaching: [
+          {
+            urlPattern: ({ request }) => request.mode === "navigate",
+            handler: "NetworkFirst",
+            options: { cacheName: "pages", networkTimeoutSeconds: 4, precacheFallback: { fallbackURL: "index.html" } },
+          },
+        ],
         // Japanese font files load by character range on demand; precaching all of them would be megabytes.
         globIgnores: ["**/noto-sans-jp*"],
         maximumFileSizeToCacheInBytes: 5 * 1024 * 1024,
