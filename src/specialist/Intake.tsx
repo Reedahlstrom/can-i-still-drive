@@ -184,10 +184,7 @@ export function RecordReview() {
   const [picked, setPicked] = useState<DriveId[]>(() => (current.length ? current : recs.map((r) => r.id)));
   const toggle = (id: DriveId) => setPicked((p) => (p.includes(id) ? p.filter((x) => x !== id) : [...p, id]));
   const assign = () => {
-    const next = sortDrives(picked);
-    // A changed set goes back to the patient so she sees the new drives before saying how she feels.
-    const changed = next.join() !== current.join();
-    go("pre-drive", { assigned: next, simStart: null, drivesCompleted: null, hardStopSeen: false, ...(changed ? { preDriveFeeling: null } : {}) });
+    go("pre-drive", { assigned: sortDrives(picked), simStart: null, drivesCompleted: null, hardStopSeen: false });
   };
   return (
     <Pane

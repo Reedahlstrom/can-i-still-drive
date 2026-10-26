@@ -57,6 +57,7 @@ type Data = {
   /** Drives the specialist assigned, in simulator order. */
   assigned: DriveId[];
   live: Live;
+  /** How she feels before and after the drive, and her own rating: asked in person, recorded by the specialist. */
   preDriveFeeling: string | null;
   postFeel: string | null;
   selfRating: number | null;
@@ -178,7 +179,7 @@ function stageState(stage: JumpStage, keep: Pick<Data, "scenario" | "speed" | "t
   const assign: Data = { ...checkin, location: "lakeview", simulator: "sim1", phase: "record-review" };
   if (stage === "assign") return assign;
   const assigned = sortDrives(recommendedFor(defaultAnswers).map((r) => r.id));
-  const drive: Data = { ...assign, phase: "pre-drive", assigned, preDriveFeeling: "I feel fine" };
+  const drive: Data = { ...assign, phase: "pre-drive", assigned, preDriveFeeling: "Feels fine" };
   if (stage === "drive") return drive;
   const review: Data = { ...drive, phase: "review", postFeel: "Comfortable", selfRating: 4, determination: { ...blankDetermination } };
   if (stage === "review") return review;
@@ -203,7 +204,9 @@ export const useDemo = create<Data & Actions>()(
     }),
     {
       name: "driverscore-demo-v3",
-      version: 1,
+      // Version 2: the drive check-ins moved from the patient's phone to the specialist's iPad.
+      version: 2,
+      migrate: (old) => ({ ...initial, lang: (old as Partial<Data>)?.lang ?? initial.lang }),
       storage: createJSONStorage(() => localStorage),
       partialize: (s) => {
         const { set: _a, setLive: _b, go: _c, startReview: _d, reset: _e, jump: _f, ...data } = s;

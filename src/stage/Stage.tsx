@@ -82,15 +82,14 @@ function useFocus(): "phone" | "ipad" | "both" {
   const s = useDemo();
   if (noDim) return "both";
   if (s.hkStep || s.ride) return "phone";
+  // The patient's phone: before the visit, then her result. Everything between happens on the iPad.
   switch (s.phase) {
     case "onboarding":
     case "ready":
     case "released":
       return "phone";
-    case "pre-drive":
-      return s.preDriveFeeling ? "ipad" : "phone";
     default:
-      return !s.postFeel || s.selfRating === null ? (s.phase === "post-drive" || s.phase === "uploading" || s.phase === "review" ? "both" : "ipad") : "ipad";
+      return "ipad";
   }
 }
 
@@ -227,7 +226,7 @@ export function Stage() {
   const patientStep = useDemo((s) => s.patientStep);
   const t = useT();
   const [panel, setPanel] = useState(false);
-  const darkStatus = (phase === "onboarding" && patientStep === "welcome") || phase === "driving";
+  const darkStatus = phase === "onboarding" && patientStep === "welcome";
   const dim = (d: "phone" | "ipad") => focus !== "both" && focus !== d;
 
   useEffect(() => {

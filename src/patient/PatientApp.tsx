@@ -3,7 +3,7 @@ import { AnimatePresence, motion } from "motion/react";
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { useT } from "../i18n/useT";
 import { speak, stopSpeaking } from "../lib/speech";
-import { atLeast, useDemo, type Phase, type PatientStep } from "../state/store";
+import { useDemo, type Phase, type PatientStep } from "../state/store";
 import { RoadProgress } from "../ui/Road";
 import { HkConnected, HkIntro, HkSheet } from "./HealthKey";
 import { Code, Details, Welcome } from "./Onboarding";
@@ -11,7 +11,7 @@ import { Questions } from "./Questions";
 import { Result, RideSheet } from "./Result";
 import { SpeechContext } from "./Screen";
 import { FamilyTab, RecordTab, TabBar } from "./Tabs";
-import { Connecting, Driving, Home, PostDrive, PreDrive, VisitStatus, Where } from "./Visit";
+import { Connecting, Home, VisitStatus, Where } from "./Visit";
 
 const STEPS = ["Your details", "Health record", "Questions", "Check in"];
 
@@ -58,11 +58,6 @@ function useView(): View {
     if (patientStep === "where") return { key: "where", node: <Where />, tabs: false, progress: true, chrome: true, back: () => set({ patientStep: "home" }) };
     if (patientStep === "connecting") return { key: "connecting", node: <Connecting />, tabs: false, progress: true, chrome: true };
   }
-
-  if (phase === "pre-drive" && !s.preDriveFeeling) return { key: "pre-drive", node: <PreDrive />, tabs: false, progress: false, chrome: true };
-  if (phase === "driving") return { key: "driving", node: <Driving />, tabs: false, progress: false, chrome: false };
-  if (atLeast(phase, "post-drive") && phase !== "released" && (!s.postFeel || s.selfRating === null))
-    return { key: `post-${s.postFeel ? 2 : 1}`, node: <PostDrive />, tabs: false, progress: false, chrome: true };
 
   if (tab === "record") return { key: "record", node: <RecordTab />, tabs: true, progress: false, chrome: true };
   if (tab === "family") return { key: "family", node: <FamilyTab />, tabs: true, progress: false, chrome: true };

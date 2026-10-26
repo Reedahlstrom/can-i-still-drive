@@ -1,24 +1,47 @@
 import { Check } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
-import { Suspense, lazy, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { patient } from "../data/demo";
 import { DRIVES, driveById } from "../data/drives";
 import { useT } from "../i18n/useT";
 import { prepareDrives } from "../sim/prepare";
+import { Simulator } from "../sim/Simulator";
 import { SCORE_AT, driveEvents, driveLength, driveSeconds, hardStopAt, segmentAt, useDriveClock } from "../sim/timeline";
 import { useDemo, useResults, useScore } from "../state/store";
 import { HealthKeyLogo } from "../ui/Brand";
 import { Button } from "../ui/primitives";
 import { Card, Pane } from "./Shell";
 
-const SimCanvas = lazy(() => import("../sim/SimCanvas").then((m) => ({ default: m.SimCanvas })));
+/** An answer Dana records after asking in person, so the patient never has to pick up her phone. */
+function Ask<T extends string | number>({ label, options, value, onChange }: { label: string; options: T[]; value: T | null; onChange: (v: T) => void }) {
+  const t = useT();
+  return (
+    <div role="radiogroup" aria-label={label} className="flex flex-wrap gap-2">
+      {options.map((o) => (
+        <button
+          key={o}
+          role="radio"
+          aria-checked={value === o}
+          onClick={() => onChange(o)}
+          className={`h-10 min-w-10 rounded-xl px-3.5 text-[15px] font-semibold transition-colors ${value === o ? "bg-asphalt text-white" : "bg-canvas hover:bg-mist"}`}
+        >
+          {typeof o === "string" ? t(o) : o}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+const beforeDrive = ["Feels fine", "Dizzy or queasy", "Tired"];
+const afterDrive = ["Comfortable", "A little hard", "Very hard", "Sick"];
 
 export function DrivePrep() {
   const feeling = useDemo((s) => s.preDriveFeeling);
   const assigned = useDemo((s) => s.assigned);
   const go = useDemo((s) => s.go);
+  const set = useDemo((s) => s.set);
   const t = useT();
-  const concern = feeling && feeling !== "I feel fine";
+  const concern = feeling && feeling !== "Feels fine";
   useEffect(() => prepareDrives(assigned), [assigned]);
   const minutes = DRIVES.filter((d) => assigned.includes(d.id)).reduce((a, d) => a + d.minutes, 0);
   return (
@@ -38,19 +61,10 @@ export function DrivePrep() {
     >
       <div className="grid grid-cols-[1fr_1fr] items-start gap-5">
         <Card title={t("Before the drive")}>
-          <div className="px-5 pt-2 pb-5">
-            {feeling ? (
-              <div className={`rounded-xl px-4 py-3.5 ${concern ? "bg-alert-tint" : "bg-canvas"}`}>
-                <div className="text-[14px] text-graphite">{t("{name} says", { name: t(patient.first) })}</div>
-                <div className="text-[19px] font-semibold">{t(feeling)}</div>
-                {concern && <div className="mt-1 text-[15px]">{t("Check symptoms before starting. Stop the drive if they get worse.")}</div>}
-              </div>
-            ) : (
-              <div className="flex items-center gap-3 rounded-xl bg-canvas px-4 py-3.5 text-[17px]">
-                <motion.span className="block size-4 rounded-full border-2 border-asphalt border-t-transparent" animate={{ rotate: 360 }} transition={{ duration: 0.8, repeat: Infinity, ease: "linear" }} />
-                {t("Waiting for {name} to answer on her phone", { name: t(patient.first) })}
-              </div>
-            )}
+          <div className="px-5 pt-1 pb-5">
+            <p className="mb-3 text-[15px] leading-snug text-graphite">{t("Ask how she feels. It doesn't count toward her result.")}</p>
+            <Ask label={t("Before the drive")} options={beforeDrive} value={feeling} onChange={(v) => set({ preDriveFeeling: v })} />
+            {concern && <div className="mt-3 rounded-xl bg-alert-tint px-4 py-3 text-[15px] leading-snug">{t("Check symptoms before starting. Stop the drive if they get worse.")}</div>}
           </div>
         </Card>
         <Card
@@ -143,16 +157,14 @@ export function LiveDrive() {
       }
     >
       <div className="overflow-hidden rounded-2xl bg-asphalt" style={{ aspectRatio: "16 / 7.6" }}>
-        <Suspense fallback={null}>
-          <SimCanvas
-            simStart={simStart}
-            speed={speed}
-            assigned={assigned}
-            raw={raw}
-            liveReaction={{ live: isLive, measured: isLive ? liveReaction ?? null : null }}
-            onBrake={(ms) => setLive({ reactionMs: ms })}
-          />
-        </Suspense>
+        <Simulator
+          simStart={simStart}
+          speed={speed}
+          assigned={assigned}
+          raw={raw}
+          liveReaction={{ live: isLive, measured: isLive ? liveReaction ?? null : null }}
+          onBrake={(ms) => setLive({ reactionMs: ms })}
+        />
       </div>
       <div className="mt-4 grid grid-cols-[1fr_1fr] gap-5">
         <Card title={tt("Drives")}>
@@ -191,6 +203,7 @@ export function LiveDrive() {
 
 export function DriveDone() {
   const go = useDemo((s) => s.go);
+  const set = useDemo((s) => s.set);
   const postFeel = useDemo((s) => s.postFeel);
   const selfRating = useDemo((s) => s.selfRating);
   const result = useScore();
@@ -199,7 +212,11 @@ export function DriveDone() {
     <Pane
       title={result.incomplete ? t("Drive stopped") : t("Drives complete")}
       sub={t("Each score comes with what was measured and why.")}
-      actions={<Button size="md" onClick={() => go("uploading")}>{t("Continue to review")}</Button>}
+      actions={
+        <Button size="md" disabled={!postFeel || selfRating === null} onClick={() => go("uploading")}>
+          {t("Continue to review")}
+        </Button>
+      }
     >
       <div className="grid grid-cols-[1.45fr_1fr] items-start gap-5">
         <Card title={t("Scores")} aside={<span className="font-display text-[15px] font-bold tnum">DriverScore {result.total}</span>}>
@@ -223,14 +240,11 @@ export function DriveDone() {
         </Card>
         <Card title={t("{name} after the drive", { name: t(patient.first) })}>
           <div className="px-5 pt-1 pb-5">
-            {postFeel ? (
-              <>
-                <div className="text-[19px] font-semibold">{t(postFeel)}</div>
-                <div className="mt-1 text-[16px] text-graphite">{selfRating ? t("Rates her drive {n} of 5", { n: selfRating }) : t("Rating her drive now")}</div>
-              </>
-            ) : (
-              <div className="text-[16px] text-graphite">{t("Answering on her phone")}</div>
-            )}
+            <p className="text-[15px] leading-snug text-graphite">{t("Ask her in person. Neither answer is part of DriverScore.")}</p>
+            <div className="mt-4 mb-2 text-[14px] font-semibold">{t("How did that drive feel?")}</div>
+            <Ask label={t("How did that drive feel?")} options={afterDrive} value={postFeel} onChange={(v) => set({ postFeel: v })} />
+            <div className="mt-4 mb-2 text-[14px] font-semibold">{t("Her own rating, 1 to 5")}</div>
+            <Ask label={t("Her own rating, 1 to 5")} options={[1, 2, 3, 4, 5]} value={selfRating} onChange={(v) => set({ selfRating: v })} />
           </div>
         </Card>
       </div>

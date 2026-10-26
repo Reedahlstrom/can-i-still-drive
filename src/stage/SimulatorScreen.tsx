@@ -1,12 +1,11 @@
-import { Suspense, lazy, useEffect } from "react";
+import { useEffect } from "react";
 import { useT } from "../i18n/useT";
 import { prepareDrives } from "../sim/prepare";
+import { Simulator } from "../sim/Simulator";
 import { driveLength, driveSeconds, useDriveClock } from "../sim/timeline";
 import { useDemo, useResults } from "../state/store";
 import { DriverScoreWordmark } from "../ui/Brand";
 import { SteeringWheel } from "../ui/Road";
-
-const SimCanvas = lazy(() => import("../sim/SimCanvas").then((m) => ({ default: m.SimCanvas })));
 
 export function SimulatorScreen() {
   const phase = useDemo((s) => s.phase);
@@ -46,16 +45,14 @@ export function SimulatorScreen() {
 
   return (
     <div className="h-full bg-asphalt">
-      <Suspense fallback={null}>
-        <SimCanvas
-          simStart={simStart}
-          speed={speed}
-          assigned={assigned}
-          raw={raw}
-          liveReaction={{ live: isLive, measured: isLive ? live.reactionMs ?? null : null }}
-          onBrake={(ms) => setLive({ reactionMs: ms })}
-        />
-      </Suspense>
+      <Simulator
+        simStart={simStart}
+        speed={speed}
+        assigned={assigned}
+        raw={raw}
+        liveReaction={{ live: isLive, measured: isLive ? live.reactionMs ?? null : null }}
+        onBrake={(ms) => setLive({ reactionMs: ms })}
+      />
     </div>
   );
 }

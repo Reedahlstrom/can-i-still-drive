@@ -1,15 +1,13 @@
-import { ChevronRight, MapPin } from "lucide-react";
+import { MapPin } from "lucide-react";
 import { motion } from "motion/react";
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { locations, simulators, specialist, visit } from "../data/demo";
 import { longDate, today } from "../lib/dates";
-import { driveById } from "../data/drives";
 import { useT } from "../i18n/useT";
-import { driveLength, driveSeconds, useDriveClock } from "../sim/timeline";
-import { atLeast, recommendedFor, useDemo, type Phase } from "../state/store";
+import { useDemo } from "../state/store";
 import { Avatar } from "../ui/Brand";
-import { Button, CheckDot, ChoiceList, Group, SectionLabel } from "../ui/primitives";
-import { RoadLoader, SteeringWheel } from "../ui/Road";
+import { Button, Group, SectionLabel } from "../ui/primitives";
+import { SteeringWheel } from "../ui/Road";
 import { Lead, Meta, Screen, Title } from "./Screen";
 
 export function Home() {
@@ -66,8 +64,12 @@ export function Where() {
   const set = useDemo((s) => s.set);
   const t = useT();
   const here = locations.find((l) => l.here)!;
+  const sim = simulators.find((s) => s.status === "ready")!;
   return (
-    <Screen speech={t("You're at {place}. Choose your simulator. Simulator 1 in Room 204 is ready.", { place: t(here.name) })}>
+    <Screen
+      speech={t("You're at {place}. Simulator 1 in Room 204 is ready for you.", { place: t(here.name) })}
+      footer={<Button onClick={() => set({ location: here.id, simulator: sim.id, patientStep: "connecting" })}>{t("Check in")}</Button>}
+    >
       <Title>{t("Check in")}</Title>
       <div className="mt-6 flex items-center gap-4 rounded-2xl bg-paper px-5 py-4">
         <span className="relative flex size-11 shrink-0 items-center justify-center rounded-full bg-mist">
@@ -81,29 +83,16 @@ export function Where() {
         </span>
       </div>
       <h2 className="mt-8 mb-3 font-display text-[24px] font-extrabold">{t("Your simulator")}</h2>
-      <div className="flex flex-col gap-3">
-        {simulators.map((s) => {
-          const ready = s.status === "ready";
-          return (
-            <button
-              key={s.id}
-              disabled={!ready}
-              onClick={() => set({ location: here.id, simulator: s.id, patientStep: "connecting" })}
-              className={`flex items-center gap-4 rounded-2xl border-2 px-5 py-5 text-left transition-colors ${ready ? "border-asphalt bg-paper" : "border-transparent bg-mist/70"}`}
-            >
-              <SimGlyph active={ready} />
-              <span className="flex-1">
-                <span className="block text-[21px] font-semibold">{t(s.name)}</span>
-                <span className="block text-[17px] text-graphite">
-                  {t(s.room)}
-                  {t(", ")}
-                  {ready ? t("ready for you") : t(s.note ?? "")}
-                </span>
-              </span>
-              {ready && <ChevronRight className="text-asphalt" />}
-            </button>
-          );
-        })}
+      <div className="flex items-center gap-4 rounded-2xl bg-paper px-5 py-5">
+        <SimGlyph active />
+        <span className="flex-1">
+          <span className="block text-[21px] font-semibold">{t(sim.name)}</span>
+          <span className="block text-[17px] text-graphite">
+            {t(sim.room)}
+            {t(", ")}
+            {t("ready for you")}
+          </span>
+        </span>
       </div>
     </Screen>
   );
@@ -146,34 +135,16 @@ export function Connecting() {
   );
 }
 
-const visitSteps: { label: string; from: Phase; done: Phase }[] = [
-  { label: "Record review", from: "checked-in", done: "pre-drive" },
-  { label: "Simulator drives", from: "pre-drive", done: "post-drive" },
-  { label: "Go over results", from: "post-drive", done: "released" },
-];
+const visitSteps = ["Record review", "Simulator drives", "Go over results"];
 
-function statusFor(phase: Phase, unwell: boolean, t: ReturnType<typeof useT>) {
-  const name = t(specialist.first);
-  switch (phase) {
-    case "checked-in":
-      return { title: t("You're checked in"), lead: t("{name} will meet you in Room 204.", { name }) };
-    case "record-review":
-      return { title: t("{name} is reviewing your record", { name }), lead: t("She'll choose the simulator drives for you from your record and answers.") };
-    case "pre-drive":
-      return { title: t("Simulator drive next"), lead: unwell ? t("{name} will check on you before you start.", { name }) : t("{name} will help you adjust the seat and mirrors.", { name }) };
-    default:
-      return { title: t("{name} is reviewing your results", { name }), lead: t("You'll go over them together in a few minutes.") };
-  }
-}
-
+/** From check-in until her result arrives, nothing here asks anything or changes. */
 export function VisitStatus() {
-  const phase = useDemo((s) => s.phase);
-  const unwell = useDemo((s) => !!s.preDriveFeeling && s.preDriveFeeling !== "I feel fine");
   const t = useT();
-  const { title, lead } = statusFor(phase, unwell, t);
-  const reviewing = atLeast(phase, "post-drive");
+  const name = t(specialist.first);
+  const meet = t("{name} will meet you in Room 204.", { name });
+  const away = t("You can put your phone away. Your results will show here at the end of your visit.");
   return (
-    <Screen speech={`${title}. ${lead}`}>
+    <Screen speech={`${t("You're checked in")}. ${meet} ${away}`}>
       <div className="flex items-center gap-4 pt-1">
         <Avatar initials={specialist.initials} size={52} />
         <div>
@@ -181,156 +152,21 @@ export function VisitStatus() {
           <div className="text-[17px] text-graphite">{t("Driving specialist, Room 204")}</div>
         </div>
       </div>
-      <motion.div key={phase} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }} className="mt-8">
-        <Title>{title}</Title>
-        <Lead>{lead}</Lead>
-      </motion.div>
-      {reviewing && (
-        <div className="mt-6 flex justify-center">
-          <SteeringWheel size={92} />
-        </div>
-      )}
+      <div className="mt-8">
+        <Title>{t("You're checked in")}</Title>
+        <Lead>{meet}</Lead>
+        <Lead>{away}</Lead>
+      </div>
       <div className="mt-8">
         <SectionLabel>{t("Your visit")}</SectionLabel>
         <Group>
-          {visitSteps.map((s, i) => {
-            const done = atLeast(phase, s.done);
-            const now = !done && atLeast(phase, s.from);
-            return (
-              <div key={s.label} className="flex items-center gap-4 px-5 py-4">
-                {done ? (
-                  <CheckDot done />
-                ) : (
-                  <span className={`flex size-7 items-center justify-center rounded-full font-display text-[15px] font-bold ${now ? "bg-signal text-asphalt" : "bg-mist text-graphite"}`}>{i + 1}</span>
-                )}
-                <span className={`text-[19px] ${now ? "font-semibold" : done ? "text-graphite" : ""}`}>{t(s.label)}</span>
-              </div>
-            );
-          })}
-        </Group>
-      </div>
-    </Screen>
-  );
-}
-
-export function PreDrive() {
-  const set = useDemo((s) => s.set);
-  const assigned = useDemo((s) => s.assigned);
-  const answers = useDemo((s) => s.answers);
-  const t = useT();
-  const name = t(specialist.first);
-  const [seen, setSeen] = useState(false);
-  const [v, setV] = useState<string | undefined>();
-  const options = ["I feel fine", "A little dizzy or queasy", "Tired"];
-  const why = Object.fromEntries(recommendedFor(answers).map((r) => [r.id, r.patientReason]));
-
-  if (!seen)
-    return (
-      <Screen
-        speech={`${t("{name} chose {n} drives for you", { name, n: assigned.length })}. ${assigned.map((id) => `${t(driveById[id].name)}. ${why[id] ?? t(driveById[id].measures)}.`).join(" ")}`}
-        footer={<Button onClick={() => setSeen(true)}>{t("Continue")}</Button>}
-      >
-        <Meta className="mb-3">{t("Your drives today")}</Meta>
-        <Title>{t("{name} chose {n} drives for you", { name, n: assigned.length })}</Title>
-        <Lead>{t("About {n} minutes on the simulator.", { n: assigned.reduce((a, id) => a + driveById[id].minutes, 0) })}</Lead>
-        <Group className="mt-6">
-          {assigned.map((id, i) => (
-            <div key={id} className="flex gap-4 px-5 py-4">
-              <span className="mt-0.5 flex size-7 shrink-0 items-center justify-center rounded-full bg-mist font-display text-[15px] font-bold">{i + 1}</span>
-              <div>
-                <div className="text-[19px] font-semibold leading-snug">{t(driveById[id].name)}</div>
-                <div className="mt-0.5 text-[17px] leading-snug text-graphite">{why[id] ?? t(driveById[id].measures)}</div>
-              </div>
+          {visitSteps.map((label, i) => (
+            <div key={label} className="flex items-center gap-4 px-5 py-4">
+              <span className="flex size-7 items-center justify-center rounded-full bg-mist font-display text-[15px] font-bold text-graphite">{i + 1}</span>
+              <span className="text-[19px]">{t(label)}</span>
             </div>
           ))}
         </Group>
-      </Screen>
-    );
-
-  return (
-    <Screen
-      speech={`${t("Before you drive")}. ${t("How do you feel right now?")} ${t("Your answer doesn't count toward your result. If you're not feeling well, {name} will wait.", { name })} ${options.map((o) => t(o)).join(". ")}.`}
-      footer={<Button disabled={!v} onClick={() => set({ preDriveFeeling: v })}>{t("Continue")}</Button>}
-    >
-      <Meta className="mb-3">{t("Before you drive")}</Meta>
-      <Title>{t("How do you feel right now?")}</Title>
-      <Lead>{t("Your answer doesn't count toward your result. If you're not feeling well, {name} will wait.", { name })}</Lead>
-      <div className="mt-7">
-        <ChoiceList options={options} value={v} onChange={(x) => setV(x as string)} />
-      </div>
-    </Screen>
-  );
-}
-
-export function Driving() {
-  const simStart = useDemo((s) => s.simStart);
-  const speed = useDemo((s) => s.speed);
-  const assigned = useDemo((s) => s.assigned);
-  const go = useDemo((s) => s.go);
-  const tr = useT();
-  const name = tr(specialist.first);
-  const t = useDriveClock(simStart, speed, driveLength(assigned.length), 2);
-  useEffect(() => {
-    const s = useDemo.getState();
-    const length = driveLength(s.assigned.length);
-    if (s.phase === "driving" && driveSeconds(s.simStart, s.speed, length) >= length) go("post-drive");
-  }, [t, go]);
-  return (
-    <Screen tone="dark" speech={`${tr("You're driving")}. ${tr('{name} is right beside you. Say "stop" any time.', { name })}`}>
-      <div className="flex h-full flex-col justify-center pb-10">
-        <div className="flex justify-center">
-          <RoadLoader width={280} light />
-        </div>
-        <h1 className="mt-10 font-display text-[36px] leading-tight font-extrabold">{tr("You're driving")}</h1>
-        <p className="mt-4 text-[20px] leading-relaxed text-white/75">{tr('{name} is right beside you. Say "stop" any time.', { name })}</p>
-      </div>
-    </Screen>
-  );
-}
-export function PostDrive() {
-  const set = useDemo((s) => s.set);
-  const postFeel = useDemo((s) => s.postFeel);
-  const t = useT();
-  const name = t(specialist.first);
-  const [feel, setFeel] = useState<string | undefined>();
-  const [rating, setRating] = useState<number | null>(null);
-  const feelOptions = ["Comfortable", "A little hard", "Very hard", "I felt sick"];
-
-  if (!postFeel) {
-    return (
-      <Screen speech={`${t("How did that drive feel?")} ${feelOptions.map((o) => t(o)).join(". ")}.`} footer={<Button disabled={!feel} onClick={() => set({ postFeel: feel })}>{t("Continue")}</Button>}>
-        <Meta className="mb-3">{t("After the drive")}</Meta>
-        <Title>{t("How did that drive feel?")}</Title>
-        <div className="mt-7">
-          <ChoiceList options={feelOptions} value={feel} onChange={(x) => setFeel(x as string)} />
-        </div>
-      </Screen>
-    );
-  }
-  return (
-    <Screen
-      speech={`${t("How do you think you did?")} ${t("{name} sees your answer. It isn't part of your DriverScore.", { name })} ${t("Choose 1 for not well, up to 5 for very well.")}`}
-      footer={<Button disabled={rating === null} onClick={() => set({ selfRating: rating })}>{t("Done")}</Button>}
-    >
-      <Meta className="mb-3">{t("After the drive")}</Meta>
-      <Title>{t("How do you think you did?")}</Title>
-      <Lead>{t("{name} sees your answer. It isn't part of your DriverScore.", { name })}</Lead>
-      <div className="mt-9 grid grid-cols-5 gap-2" role="radiogroup" aria-label={t("Your rating")}>
-        {[1, 2, 3, 4, 5].map((n) => (
-          <button
-            key={n}
-            role="radio"
-            aria-checked={rating === n}
-            onClick={() => setRating(n)}
-            className={`flex aspect-square items-center justify-center rounded-2xl border-2 font-display text-[28px] font-bold transition-colors ${rating === n ? "border-asphalt bg-asphalt text-white" : "border-transparent bg-paper"}`}
-          >
-            {n}
-          </button>
-        ))}
-      </div>
-      <div className="mt-3 flex justify-between text-[17px] text-graphite">
-        <span>{t("Not well")}</span>
-        <span>{t("Very well")}</span>
       </div>
     </Screen>
   );
