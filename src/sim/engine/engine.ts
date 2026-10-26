@@ -104,9 +104,13 @@ class Engine {
   output = new OutputPass();
   mode: "day" | "night" | null = null;
   tick = 0;
+  /** Set when the browser takes the 3D context away (a graphics reset, or memory running low). A lost
+   * engine only draws black, so the next request for an engine gets a fresh one. */
+  lost = false;
 
   constructor(onScreen = false) {
     this.canvas = document.createElement("canvas");
+    this.canvas.addEventListener("webglcontextlost", () => (this.lost = true));
     this.exact = onScreen;
     // Off screen, frames are copied out after drawing, so the buffer must survive until then.
     this.renderer = new THREE.WebGLRenderer({ canvas: this.canvas, antialias: false, alpha: false, powerPreference: "high-performance", preserveDrawingBuffer: !onScreen });
@@ -451,13 +455,20 @@ class Engine {
 
 export type { Engine };
 
+function retire(e: Engine | null) {
+  if (!e?.lost) return e;
+  e.canvas.remove();
+  e.renderer.dispose();
+  return null;
+}
+
 let engine: Engine | null = null;
 /** Shared off-screen engine: frames are copied into any number of 2D canvases (the video, and spare views). */
-export const getEngine = () => (engine ??= new Engine());
+export const getEngine = () => (engine = retire(engine) ?? new Engine());
 
 let live: Engine | null = null;
 /** The app's engine, drawing straight into its own on-screen canvas. */
-export const getLiveEngine = () => (live ??= new Engine(true));
+export const getLiveEngine = () => (live = retire(live) ?? new Engine(true));
 
 /** Build scenes ahead of time, one per idle moment, so moving between drives never stalls. */
 export function prepare(ids: SetId[]) {

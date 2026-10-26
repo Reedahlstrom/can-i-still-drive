@@ -78,13 +78,20 @@ export function SimCanvas({
     const canvas = ref.current!;
     const ctx = canvas.getContext("2d")!;
     // The 3D view draws straight into the live engine's canvas. If another view already holds it,
-    // fall back to copying frames from the shared engine into this canvas.
-    const engine = getLiveEngine();
-    const own = !engine.canvas.isConnected;
-    if (own) {
-      Object.assign(engine.canvas.style, { position: "absolute", inset: "0", width: "100%", height: "100%", display: "block" });
-      host.current!.appendChild(engine.canvas);
-    }
+    // fall back to copying frames from the shared engine into this canvas. If the browser takes the
+    // 3D context away, a fresh engine takes the old one's place on the next frame.
+    let engine: Engine | null = null;
+    let own = false;
+    const attach = () => {
+      if (own) engine!.canvas.remove();
+      own = false;
+      engine = getLiveEngine();
+      own = !engine.canvas.isConnected;
+      if (own) {
+        Object.assign(engine.canvas.style, { position: "absolute", inset: "0", width: "100%", height: "100%", display: "block" });
+        host.current!.appendChild(engine.canvas);
+      }
+    };
     let raf = 0;
     const fit = () => {
       const dpr = Math.min(2, window.devicePixelRatio || 1);
@@ -95,18 +102,29 @@ export function SimCanvas({
     const ro = new ResizeObserver(fit);
     ro.observe(canvas);
     const opts = { maxPixels: 2_400_000, shadow: 2048 };
-    const loop = () => {
-      const s = state.current;
-      const t = driveSeconds(s.simStart, s.speed, driveLength(s.assigned.length));
-      if (own) renderLive(engine, ctx, canvas.width, canvas.height, t, s.assigned, s.raw, s.liveReaction, opts);
-      else render(ctx, canvas.width, canvas.height, t, s.assigned, s.raw, s.liveReaction, opts);
+    // A frame that fails never stops the view: the next tries again, after a pause if they keep failing.
+    let failures = 0;
+    let resume = 0;
+    const loop = (now: number) => {
       raf = requestAnimationFrame(loop);
+      if (now < resume) return;
+      try {
+        if (!engine || engine.lost) attach();
+        const s = state.current;
+        const t = driveSeconds(s.simStart, s.speed, driveLength(s.assigned.length));
+        if (own) renderLive(engine!, ctx, canvas.width, canvas.height, t, s.assigned, s.raw, s.liveReaction, opts);
+        else render(ctx, canvas.width, canvas.height, t, s.assigned, s.raw, s.liveReaction, opts);
+        failures = 0;
+      } catch (e) {
+        if (!failures++) console.error(e);
+        if (failures > 2) resume = now + 1000;
+      }
     };
     raf = requestAnimationFrame(loop);
     return () => {
       cancelAnimationFrame(raf);
       ro.disconnect();
-      if (own) engine.canvas.remove();
+      if (own) engine!.canvas.remove();
     };
   }, []);
 
