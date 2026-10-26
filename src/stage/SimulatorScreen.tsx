@@ -3,7 +3,7 @@ import { useT } from "../i18n/useT";
 import { prepareDrives } from "../sim/prepare";
 import { Simulator } from "../sim/Simulator";
 import { driveLength, driveSeconds, useDriveClock } from "../sim/timeline";
-import { useDemo, useResults } from "../state/store";
+import { recommendedFor, useDemo, useResults } from "../state/store";
 import { DriverScoreWordmark } from "../ui/Brand";
 import { SteeringWheel } from "../ui/Road";
 
@@ -21,8 +21,12 @@ export function SimulatorScreen() {
   const t = useDriveClock(simStart, speed, length, 4);
   const isLive = scenario === "live";
   const tt = useT();
-  // Build the assigned drives' scenes while the simulator waits, so the first frame is ready.
-  useEffect(() => (phase === "pre-drive" ? prepareDrives(assigned) : undefined), [phase, assigned]);
+  // Build scenes while the simulator waits: the drives the record points to during the review, then
+  // the assigned ones, so drives start without a stall.
+  const answers = useDemo((s) => s.answers);
+  const warm = phase === "record-review" ? recommendedFor(answers).map((r) => r.id) : phase === "pre-drive" || phase === "driving" ? assigned : [];
+  const warmKey = warm.join();
+  useEffect(() => prepareDrives(warm), [warmKey]);
 
   useEffect(() => {
     // Read the clock fresh so a new drive never inherits the last drive's elapsed time.

@@ -41,11 +41,10 @@ Press the sliders button in the bottom-right corner of the stage (or the backtic
 2. Patient: connect health record with HealthKey (sources, sharing, gather)
 3. Patient: driving questions
 4. Patient: check in at the hospital with one tap. From here the phone asks nothing and stays as it is until her result.
-5. Specialist: review the record and answers, flags first, and assign drives. The drives the record points to come pre-selected, each with its reason.
-6. Specialist: asks how she feels before the drive and records it on the iPad
-7. Simulator: the assigned drives, each scored live on the iPad as it finishes. Afterwards the specialist records how the drive felt and her own rating.
-8. Specialist: results saved to the record; each drive's score with the measurement, rule and result; the logic behind the suggestion; choose the outcome, sign
-9. Patient: signed result with each drive explained, next steps, health record, sending the result to family, and ride booking when it's time to stop
+5. Specialist: review the record and answers, flags first, and assign drives. The drives the record points to come pre-selected, each with its reason. One tap starts them on the simulator.
+6. Simulator: the assigned drives, each scored live on the iPad as it finishes. Afterwards the specialist records how the drive felt and her own rating.
+7. Specialist: results saved to the record; each drive's score with the measurement, rule and result; the logic behind the suggestion; choose the outcome, sign
+8. Patient: signed result with each drive explained, next steps, health record, sending the result to family, and ride booking when it's time to stop
 
 ## Scoring
 

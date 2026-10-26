@@ -57,8 +57,7 @@ type Data = {
   /** Drives the specialist assigned, in simulator order. */
   assigned: DriveId[];
   live: Live;
-  /** How she feels before and after the drive, and her own rating: asked in person, recorded by the specialist. */
-  preDriveFeeling: string | null;
+  /** How the drive felt and her own rating: asked in person, recorded by the specialist. */
   postFeel: string | null;
   selfRating: number | null;
   simStart: number | null;
@@ -76,6 +75,8 @@ type Actions = {
   set: (p: Partial<Data>) => void;
   setLive: (p: Live) => void;
   go: (phase: Phase, extra?: Partial<Data>) => void;
+  /** Assign these drives and start the simulator. */
+  startDrives: (assigned: DriveId[]) => void;
   startReview: () => void;
   reset: () => void;
   jump: (stage: JumpStage) => void;
@@ -118,7 +119,6 @@ const initial: Data = {
   simulator: null,
   assigned: [],
   live: {},
-  preDriveFeeling: null,
   postFeel: null,
   selfRating: null,
   simStart: null,
@@ -179,7 +179,7 @@ function stageState(stage: JumpStage, keep: Pick<Data, "scenario" | "speed" | "t
   const assign: Data = { ...checkin, location: "lakeview", simulator: "sim1", phase: "record-review" };
   if (stage === "assign") return assign;
   const assigned = sortDrives(recommendedFor(defaultAnswers).map((r) => r.id));
-  const drive: Data = { ...assign, phase: "pre-drive", assigned, preDriveFeeling: "Feels fine" };
+  const drive: Data = { ...assign, phase: "pre-drive", assigned };
   if (stage === "drive") return drive;
   const review: Data = { ...drive, phase: "review", postFeel: "Comfortable", selfRating: 4, determination: { ...blankDetermination } };
   if (stage === "review") return review;
@@ -195,6 +195,7 @@ export const useDemo = create<Data & Actions>()(
       set: (p) => set(p),
       setLive: (p) => set({ live: { ...get().live, ...p } }),
       go: (phase, extra) => set({ phase, ...extra }),
+      startDrives: (assigned) => set({ phase: "driving", assigned, simStart: Date.now(), drivesCompleted: null, hardStopSeen: false, live: { ...get().live, reactionMs: undefined } }),
       startReview: () => set({ phase: "review", determination: { ...blankDetermination } }),
       reset: () => set({ ...initial, scenario: get().scenario, speed: get().speed, lang: get().lang, visit: get().visit + 1 }),
       jump: (stage) => {
@@ -209,7 +210,7 @@ export const useDemo = create<Data & Actions>()(
       migrate: (old) => ({ ...initial, lang: (old as Partial<Data>)?.lang ?? initial.lang }),
       storage: createJSONStorage(() => localStorage),
       partialize: (s) => {
-        const { set: _a, setLive: _b, go: _c, startReview: _d, reset: _e, jump: _f, ...data } = s;
+        const { set: _a, setLive: _b, go: _c, startDrives: _g, startReview: _d, reset: _e, jump: _f, ...data } = s;
         return data;
       },
     },

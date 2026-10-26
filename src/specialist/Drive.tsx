@@ -32,16 +32,14 @@ function Ask<T extends string | number>({ label, options, value, onChange }: { l
   );
 }
 
-const beforeDrive = ["Feels fine", "Dizzy or queasy", "Tired"];
 const afterDrive = ["Comfortable", "A little hard", "Very hard", "Sick"];
 
+/** Drives already assigned, ready to run again. Assigning starts the simulator straight away, so this shows only when reopened. */
 export function DrivePrep() {
-  const feeling = useDemo((s) => s.preDriveFeeling);
   const assigned = useDemo((s) => s.assigned);
   const go = useDemo((s) => s.go);
-  const set = useDemo((s) => s.set);
+  const startDrives = useDemo((s) => s.startDrives);
   const t = useT();
-  const concern = feeling && feeling !== "Feels fine";
   useEffect(() => prepareDrives(assigned), [assigned]);
   const minutes = DRIVES.filter((d) => assigned.includes(d.id)).reduce((a, d) => a + d.minutes, 0);
   return (
@@ -49,24 +47,12 @@ export function DrivePrep() {
       title={t("Simulator drives")}
       sub={t("{n} drives assigned, about {m} minutes on Simulator 1.", { n: assigned.length, m: minutes })}
       actions={
-        <Button
-          size="md"
-          variant="signal"
-          disabled={!feeling || !assigned.length}
-          onClick={() => go("driving", { simStart: Date.now(), drivesCompleted: null, hardStopSeen: false, live: { ...useDemo.getState().live, reactionMs: undefined } })}
-        >
+        <Button size="md" variant="signal" disabled={!assigned.length} onClick={() => startDrives(assigned)}>
           {t("Start simulator")}
         </Button>
       }
     >
-      <div className="grid grid-cols-[1fr_1fr] items-start gap-5">
-        <Card title={t("Before the drive")}>
-          <div className="px-5 pt-1 pb-5">
-            <p className="mb-3 text-[15px] leading-snug text-graphite">{t("Ask how she feels. It doesn't count toward her result.")}</p>
-            <Ask label={t("Before the drive")} options={beforeDrive} value={feeling} onChange={(v) => set({ preDriveFeeling: v })} />
-            {concern && <div className="mt-3 rounded-xl bg-alert-tint px-4 py-3 text-[15px] leading-snug">{t("Check symptoms before starting. Stop the drive if they get worse.")}</div>}
-          </div>
-        </Card>
+      <div className="max-w-[640px]">
         <Card
           title={t("Assigned drives")}
           aside={
@@ -110,6 +96,8 @@ export function LiveDrive() {
   const isLive = scenario === "live";
   const events = driveEvents(assigned, result.drives, raw).filter((e) => e.at <= t);
   const [confirmStop, setConfirmStop] = useState(false);
+  // Any scene not built during the review gets built while the first drives play.
+  useEffect(() => prepareDrives(assigned), [assigned]);
 
   useEffect(() => {
     if (!confirmStop) return;

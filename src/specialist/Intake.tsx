@@ -1,11 +1,12 @@
 import { Check } from "lucide-react";
 import { motion } from "motion/react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { DRIVES, recommendDrives, sortDrives, type DriveId } from "../data/drives";
 import { patient, questions, record, referringDoctor, schedule, sources, visit } from "../data/demo";
 import { tr } from "../i18n";
 import { useT } from "../i18n/useT";
 import { longDate, today } from "../lib/dates";
+import { prepareDrives } from "../sim/prepare";
 import { useDemo } from "../state/store";
 import { Avatar, HealthKeyLogo, initialsOf } from "../ui/Brand";
 import { Button } from "../ui/primitives";
@@ -173,6 +174,7 @@ function AssignDrives({ picked, toggle, locked }: { picked: DriveId[]; toggle: (
 
 export function RecordReview() {
   const go = useDemo((s) => s.go);
+  const startDrives = useDemo((s) => s.startDrives);
   const answers = useDemo((s) => s.answers);
   const shared = useSharedRecord();
   const hk = shared.on;
@@ -183,9 +185,8 @@ export function RecordReview() {
   const t = useT();
   const [picked, setPicked] = useState<DriveId[]>(() => (current.length ? current : recs.map((r) => r.id)));
   const toggle = (id: DriveId) => setPicked((p) => (p.includes(id) ? p.filter((x) => x !== id) : [...p, id]));
-  const assign = () => {
-    go("pre-drive", { assigned: sortDrives(picked), simStart: null, drivesCompleted: null, hardStopSeen: false });
-  };
+  // Build the picked drives' scenes while Dana reviews, so the simulator starts without a stall.
+  useEffect(() => prepareDrives(picked), [picked]);
   return (
     <Pane
       title={t(`${patient.first} ${patient.last}`)}
@@ -194,8 +195,8 @@ export function RecordReview() {
         reviewing ? (
           <Button size="md" onClick={() => go("review")}>{t("Back to review")}</Button>
         ) : (
-          <Button size="md" disabled={!picked.length} onClick={assign}>
-            {picked.length === 1 ? t("Assign 1 drive") : t("Assign {n} drives", { n: picked.length })}
+          <Button size="md" variant="signal" disabled={!picked.length} onClick={() => startDrives(sortDrives(picked))}>
+            {picked.length === 1 ? t("Start 1 drive") : t("Start {n} drives", { n: picked.length })}
           </Button>
         )
       }
